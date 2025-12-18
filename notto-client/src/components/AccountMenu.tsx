@@ -23,7 +23,7 @@ export default function AccountMenu() {
       const users = await invoke("get_users") as User[];
       setAllUsers(users);
 
-      // Find current user (in a real app, you'd store the current username properly)
+      // Find current user (TODO: in a real app, you'd store the current username properly)
       if (users.length > 0 && userId) {
         setCurrentUser(users[0]); // For now, just use first user
       }
@@ -36,17 +36,21 @@ export default function AccountMenu() {
     try {
       await invoke("set_user", { username });
       setShowUserMenu(false);
-      // Refresh the app - you might want to reload or update state here
+      // Refresh the app - TODO: you might want to reload or update state here
       window.location.reload();
     } catch (e) {
       console.error("Failed to switch account:", e);
     }
   }
 
+  async function createNewAccount() {
+    //TODO
+  }
+
   function handleLogout() {
     // Clear user session
     setUserId(null);
-    // In a real app, you'd also clear tokens and encrypted data from memory
+    // TODO: In a real app, you'd also clear tokens and encrypted data from memory
   }
 
   return (
@@ -85,7 +89,7 @@ export default function AccountMenu() {
             </div>
           </div>
           <svg
-            className={`w-4 h-4 text-slate-400 transition-transform flex-shrink-0 ${showUserMenu ? "rotate-180" : ""}`}
+            className={`w-4 h-4 text-slate-400 transition-transform shrink-0 ${showUserMenu ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -116,9 +120,18 @@ export default function AccountMenu() {
                       </div>
                       <span className="text-xs md:text-sm text-white truncate">{user.username}</span>
                     </button>
-                  ))}
+                  )) }
               </div>
-            )}
+            ) }
+            <div className="px-2 md:px-3 py-2 text-xs font-medium text-slate-400 uppercase">
+                  <button
+                    onClick={() => createNewAccount()}
+                    className="w-full px-2 md:px-3 py-2 flex items-center gap-2 md:gap-3 hover:bg-slate-700 transition-colors text-left"
+                  >
+                  <span className="text-xs md:text-sm text-white truncate">Add another account</span>
+                  </button>
+            </div>
+
 
             {/* Actions */}
             <div className="border-t border-slate-700 py-1">
