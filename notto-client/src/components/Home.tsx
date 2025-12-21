@@ -17,7 +17,7 @@ type NoteContent = {
 };
 
 export default function Home() {
-  const { userId } = useGeneral();
+  const { user } = useGeneral();
   const [notes, setNotes] = useState<Note[] | null>(null);
   const [currentNote, setCurrentNote] = useState<NoteContent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,7 +28,7 @@ export default function Home() {
   }, []);
 
   function get_notes_metadata() {
-    invoke("get_all_notes_metadata", { id_user: userId })
+    invoke("get_all_notes_metadata", { id_user: user?.id })
       .then((notes) => setNotes(notes as Note[]))
       .catch((e) => console.error(e));
   }

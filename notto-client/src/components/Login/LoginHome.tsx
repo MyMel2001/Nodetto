@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Login from "./Login";
 import CreateAccount from "./CreateAccount";
+import { useGeneral } from "../../store/general";
+import { invoke } from "@tauri-apps/api/core";
+import { User } from "../AccountMenu";
 
 export default function LoginHome() {
   const [view, setView] = useState<"login" | "create">("login");
+  const { user, setUser, allUsers, setAllUsers } = useGeneral();
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-linear-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
@@ -13,25 +17,42 @@ export default function LoginHome() {
           <p className="text-sm md:text-base text-slate-400">Secure, encrypted note-taking</p>
         </div>
 
+        {allUsers &&
+          <>
+            <p className="text-center text-white mb-1">Select your user: </p>
+            <div className="flex gap-2 justify-center mb-3 text-white">
+              {allUsers
+                .map(user => (
+                  // <button className="px-2 bg-blue-600 rounded-2xl text-center">{user.username}</button>
+                  <button 
+                    onClick={() => setUser(user)}
+                    className="py-2 px-3 md:px-4 rounded-md font-medium text-sm md:text-base transition-colors bg-slate-600 hover:bg-blue-600 text-white"
+                  >
+                    {user.username}
+                  </button>
+                ))
+              }
+            </div>
+          </>
+        }
+
         <div className="bg-slate-800 rounded-lg shadow-xl p-4 md:p-6 border border-slate-700">
           <div className="flex gap-2 mb-6">
             <button
               onClick={() => setView("login")}
-              className={`flex-1 py-2 px-3 md:px-4 rounded-md font-medium text-sm md:text-base transition-colors ${
-                view === "login"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-              }`}
+              className={`flex-1 py-2 px-3 md:px-4 rounded-md font-medium text-sm md:text-base transition-colors ${view === "login"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                }`}
             >
               Login
             </button>
             <button
               onClick={() => setView("create")}
-              className={`flex-1 py-2 px-3 md:px-4 rounded-md font-medium text-sm md:text-base transition-colors ${
-                view === "create"
-                  ? "bg-blue-600 text-white"
-                  : "bg-slate-700 text-slate-300 hover:bg-slate-600"
-              }`}
+              className={`flex-1 py-2 px-3 md:px-4 rounded-md font-medium text-sm md:text-base transition-colors ${view === "create"
+                ? "bg-blue-600 text-white"
+                : "bg-slate-700 text-slate-300 hover:bg-slate-600"
+                }`}
             >
               Create Account
             </button>

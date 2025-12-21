@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../../store/general";
+import { User } from "../AccountMenu";
 
 export default function CreateAccount() {
-  const { setUserId } = useGeneral();
+  const { setUser } = useGeneral();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -63,7 +64,11 @@ export default function CreateAccount() {
       }) as boolean;
 
       if (success) {
-        setUserId(1); // This will trigger the app to show Home
+        invoke("get_logged_user").then((u) => u as User | null).then((u) => {
+          if (u) {
+            setUser(u);
+          };
+        }).catch((e) => console.error(e));
       } else {
         setError("Account created but login failed");
       }

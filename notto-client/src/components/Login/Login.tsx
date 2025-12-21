@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../../store/general";
+import { User } from "../AccountMenu";
 
 export default function Login() {
-  const { setUserId } = useGeneral();
+  const { setUser } = useGeneral();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [instance, setInstance] = useState("http://localhost:3000");
@@ -22,7 +23,7 @@ export default function Login() {
 
     try {
       // First check if user exists locally, if not create local user
-      const users = await invoke("get_users") as Array<{ id: number; username: string }>;
+      const users = await invoke("get_users") as User[];
       const userExists = users.some(u => u.username === username);
 
       if (!userExists) {
@@ -40,7 +41,11 @@ export default function Login() {
       }) as boolean;
 
       if (success) {
-        setUserId(1); // This will trigger the app to show Home
+        invoke("get_logged_user").then((u) => u as User | null).then((u) => {
+          if (u) {
+            setUser(u);
+          };
+        }).catch((e) => console.error(e));
       } else {
         setError("Login failed");
       }

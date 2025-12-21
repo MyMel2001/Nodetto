@@ -276,7 +276,7 @@ impl Common {
     }
 
     pub fn update(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-        conn.execute("UPDATE note SET value = ? WHERE key = ?",
+        conn.execute("UPDATE common SET value = ? WHERE key = ?",
             (&self.value, &self.key))?;
 
         Ok(())

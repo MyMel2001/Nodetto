@@ -7,21 +7,35 @@ import LoginHome from "./components/Login/LoginHome";
 import { User } from "./components/AccountMenu";
 
 function App() {
-  const { userId, setUserId } = useGeneral();
+  const { user, setUser, allUsers, setAllUsers } = useGeneral();
 
   useEffect(() => {
     // Initialize the database on app start
     invoke("init").catch((e) => console.error(e));
     invoke("get_logged_user").then((u) => u as User | null).then((u) => {
       if (u) {
-        setUserId(u.id);
+        setUser(u);
       };
     }).catch((e) => console.error(e));
   }, []);
 
+  useEffect(() => {
+    loadUsers();
+  }, [user]);
+
+  async function loadUsers() {
+    try {
+      const users = await invoke("get_users") as User[];
+      setAllUsers(users);
+
+    } catch (e) {
+      console.error("Failed to load users:", e);
+    }
+  }
+
   return (
     <div className="h-screen w-screen">
-      {userId ? <Home /> : <LoginHome />}
+      {user ? <Home /> : <LoginHome />}
     </div>
   );
 }

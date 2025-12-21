@@ -154,7 +154,7 @@ pub async fn test(state: State<'_, Mutex<AppState>>) -> Result<(), CommandError>
 }
 
 #[tauri::command]
-pub async fn set_logged_user(state: State<'_, Mutex<AppState>>, username: String) -> Result<(), CommandError> {
+pub async fn set_logged_user(state: State<'_, Mutex<AppState>>, username: String) -> Result<FilteredUser, CommandError> {
     let mut state = state.lock().await;
     
     let user = match username.is_empty() {
@@ -175,9 +175,11 @@ pub async fn set_logged_user(state: State<'_, Mutex<AppState>>, username: String
     state.user = user.clone();
 
     let conn = state.database.lock().await;
-    db::operations::set_logged_user(&conn, user);
+    db::operations::set_logged_user(&conn, user.clone());
 
-    Ok(())
+    let user = user.unwrap();
+    
+    Ok(FilteredUser { id: user.id.unwrap(), username: user.username })
 }
 
 #[tauri::command]

@@ -1,17 +1,24 @@
 import { create } from "zustand"
+import { User } from "../components/AccountMenu"
 
 type Store = {
-  userId: number | null
+  user: User | null
+  allUsers: User[]
 
-  setUserId: (newUserId: number | null) => void
+  setUser: (newUser: User | null) => void
+  setAllUsers: (newUsers: User[]) => void
 }
 
 export const useGeneral = create<Store>(
   (set) => ({
-    userId: null,
+    user: null,
+    allUsers: [],
 
-    setUserId: (newUserId) => {
-      set(() => ({ userId: newUserId }))
+    setUser: (newUser) => {
+      set(() => ({ user: newUser }))
+    },
+    setAllUsers: (newUsers) => {
+      set(() => ({ allUsers: newUsers }))
     }
   })
 )

@@ -8,48 +8,30 @@ export type User = {
 };
 
 export default function AccountMenu() {
-  const { userId, setUserId } = useGeneral();
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const { user, setUser, allUsers, setAllUsers } = useGeneral();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [syncStatus] = useState<"synced" | "syncing" | "error">("synced");
 
-  useEffect(() => {
-    loadUsers();
-  }, [userId]);
-
-  async function loadUsers() {
-    try {
-      const users = await invoke("get_users") as User[];
-      setAllUsers(users);
-
-      // Find current user (TODO: in a real app, you'd store the current username properly)
-      if (users.length > 0 && userId) {
-        setCurrentUser(users[0]); // TODO: For now, just use first user
-      }
-    } catch (e) {
-      console.error("Failed to load users:", e);
-    }
-  }
-
   async function switchAccount(username: string) {
     try {
-      await invoke("set_logged_user", { username });
+      const user = await invoke("set_logged_user", { username }) as User;
+      setUser(user);
       setShowUserMenu(false);
-      // Refresh the app - TODO: you might want to reload or update state here
+      
       window.location.reload();
     } catch (e) {
       console.error("Failed to switch account:", e);
     }
   }
 
-  async function createNewAccount() {
-    //TODO
+  function addAccount() {
+    setUser(null);
+    invoke("set_logged_user", { username: "" }).catch((e) => console.error(e));
   }
 
   function handleLogout() {
     // Clear user session
-    setUserId(null);
+    setUser(null);
     invoke("set_logged_user", { username: "" }).catch((e) => console.error(e));
 
     // TODO: Also clear tokens and encrypted data from memory
@@ -79,11 +61,11 @@ export default function AccountMenu() {
         >
           <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-blue-600 flex items-center justify-center text-white font-medium text-sm">
-              {currentUser?.username.charAt(0).toUpperCase() || "?"}
+              {user?.username.charAt(0).toUpperCase() || "?"}
             </div>
             <div className="flex-1 min-w-0">
               <div className="text-xs md:text-sm font-medium text-white truncate">
-                {currentUser?.username || "No user"}
+                {user?.username || "No user"}
               </div>
               <div className="text-xs text-slate-400 hidden md:block">
                 Click to switch account
@@ -104,13 +86,13 @@ export default function AccountMenu() {
         {showUserMenu && (
           <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
             {/* Other Users */}
-            {allUsers.filter(u => u.username !== currentUser?.username).length > 0 && (
+            {allUsers.filter(u => u.username !== user?.username).length > 0 && (
               <div className="py-1">
                 <div className="px-2 md:px-3 py-2 text-xs font-medium text-slate-400 uppercase">
                   Switch Account
                 </div>
                 {allUsers
-                  .filter(u => u.username !== currentUser?.username)
+                  .filter(u => u.username !== user?.username)
                   .map(user => (
                     <button
                       key={user.id}
@@ -127,7 +109,7 @@ export default function AccountMenu() {
             ) }
             <div className="px-2 md:px-3 py-2 text-xs font-medium text-slate-400 uppercase">
                   <button
-                    onClick={() => createNewAccount()}
+                    onClick={() => addAccount()}
                     className="w-full px-2 md:px-3 py-2 flex items-center gap-2 md:gap-3 hover:bg-slate-700 transition-colors text-left"
                   >
                   <span className="text-xs md:text-sm text-white truncate">Add another account</span>
