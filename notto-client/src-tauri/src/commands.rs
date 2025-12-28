@@ -216,7 +216,7 @@ pub async fn sync_create_account(state: State<'_, Mutex<AppState>>, username: St
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn sync_login(state: State<'_, Mutex<AppState>>, username: String, password: String, instance: Option<String>) -> Result<bool, CommandError> {
+pub async fn sync_login(state: State<'_, Mutex<AppState>>, username: String, password: String, instance: Option<String>) -> Result<(), CommandError> {
     trace!("login command received");
 
     let mut state = state.lock().await;
@@ -232,20 +232,15 @@ pub async fn sync_login(state: State<'_, Mutex<AppState>>, username: String, pas
 
     let mut user = {
         let conn = state.database.lock().await;
-        match db::operations::get_user(&conn, username).unwrap() {
-            Some(u) => u,
-            None => return Err(CommandError { message: "User doesn't exist".to_string() })
-        }
+        db::operations::create_user(&conn, username.clone()).unwrap();
+        db::operations::get_user(&conn, username).unwrap().unwrap()
     };
 
-    trace!("get user = ok");
-
-    //TODO: if !user.has_mek() then do not decrypt mek?
-    //TODO: handle if user account not created locally?
+    trace!("create user = ok");
 
     let mek = crypt::decrypt_mek(password, login_data.encrypted_mek_password, login_data.salt_data, login_data.mek_password_nonce);
 
-    trace!("mek encrypted");
+    trace!("mek decrypted");
     
     user.master_encryption_key = mek;
     user.token = Some(login_data.token.clone());
@@ -253,7 +248,7 @@ pub async fn sync_login(state: State<'_, Mutex<AppState>>, username: String, pas
 
     state.user = Some(user.clone());
 
-    trace!("state modified");
+    trace!("state modified: {state:?}");
 
     {
         let conn = state.database.lock().await;
@@ -262,7 +257,7 @@ pub async fn sync_login(state: State<'_, Mutex<AppState>>, username: String, pas
 
     trace!("user modified");
 
-    Ok(true)
+    Ok(())
 }
 
 #[tauri::command]

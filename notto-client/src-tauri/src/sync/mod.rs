@@ -33,8 +33,6 @@ pub async fn create_account(user: User, account: crypt::AccountEncryptionData, i
 }
 
 pub async fn login(username: String, password: String, instance: String) -> shared::Login{
-
-
     trace!("requesting login...");
     //Request login
     let request_params = shared::LoginRequestParams {

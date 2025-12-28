@@ -156,6 +156,7 @@ pub fn create_account(password: String, mek: Key<Aes256Gcm>) -> AccountEncryptio
     }
 }
 
+/// Returns login hash
 pub fn login(login_request: LoginRequest, password: String) -> String {
     let argon2 = Argon2::default();
 

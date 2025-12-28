@@ -22,34 +22,22 @@ export default function Login() {
     setError(null);
 
     try {
-      // First check if user exists locally, if not create local user
-      const users = await invoke("get_users") as User[];
-      const userExists = users.some(u => u.username === username);
-
-      //TODO: not sure about that here?
-      if (!userExists) {
-        await invoke("create_user", { username });
-      }
-
-      // Set the user
-      await invoke("set_logged_user", { username });
-
       // Login to server
-      const success = await invoke("sync_login", {
+      await invoke("sync_login", {
         username,
         password,
         instance
-      }) as boolean;
+      }).catch((e: any) => {
+        setError(e.message || "Login failed");
+        console.error("login failed:", e);
+      });
 
-      if (success) {
-        invoke("get_logged_user").then((u) => u as User | null).then((u) => {
-          if (u) {
-            setUser(u);
-          };
-        }).catch((e) => console.error(e));
-      } else {
-        setError("Login failed");
-      }
+      await invoke("get_logged_user").then((u) => u as User | null).then((u) => {
+        if (u) {
+          setUser(u);
+        };
+      }).catch((e) => console.error(e));
+
     } catch (e: any) {
       setError(e.message || "Login failed");
       console.error(e);
