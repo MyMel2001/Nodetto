@@ -50,28 +50,24 @@ export default function CreateAccount() {
       await invoke("set_logged_user", { username });
 
       // Create account on server
-      await invoke("sync_create_account", {
-        username,
-        password,
-        instance: instance || undefined
-      });
+      // await invoke("sync_create_account", {
+      //   username,
+      //   password,
+      //   instance: instance || undefined
+      // });
 
       // Login after account creation
-      const success = await invoke("sync_login", {
-        username,
-        password,
-        instance: instance || undefined
-      }) as boolean;
+      // const success = await invoke("sync_login", {
+      //   username,
+      //   password,
+      //   instance: instance || undefined
+      // }) as boolean;
 
-      if (success) {
-        invoke("get_logged_user").then((u) => u as User | null).then((u) => {
-          if (u) {
-            setUser(u);
-          };
-        }).catch((e) => console.error(e));
-      } else {
-        setError("Account created but login failed");
-      }
+      invoke("get_logged_user").then((u) => u as User | null).then((u) => {
+        if (u) {
+          setUser(u);
+        };
+      }).catch((e) => console.error(e));
     } catch (e: any) {
       setError(e.message || "Account creation failed");
       console.error(e);

@@ -7,7 +7,7 @@ use tauri_plugin_log::log::{debug, trace};
 use crate::{AppState, crypt, sync};
 use crate::crypt::NoteData;
 use crate::db;
-use crate::db::schema::{Note, User};
+use crate::db::schema::{Note, Workspace};
 
 ///Convert any error to string for frontend
 #[derive(Debug, Serialize)]
@@ -24,16 +24,16 @@ impl From<Box<dyn std::error::Error>> for CommandError {
 }
 
 #[derive(Debug, Serialize)]
-pub struct FilteredUser {
+pub struct FilteredWorkspace {
     pub id: u32,
-    pub username: String,
+    pub workspace_name: String,
 }
 
-impl From<User> for FilteredUser {
-    fn from(user: User) -> Self{
-        FilteredUser {
-            id: user.id.unwrap(),
-            username: user.username
+impl From<Workspace> for FilteredWorkspace {
+    fn from(workspace: Workspace) -> Self{
+        FilteredWorkspace {
+            id: workspace.id.unwrap(),
+            workspace_name: workspace.workspace_name
         }
     }
 }
@@ -134,16 +134,16 @@ pub async fn create_user(state: State<'_, Mutex<AppState>>, username: String) ->
 }
 
 #[tauri::command]
-pub async fn get_users(state: State<'_, Mutex<AppState>>) -> Result<Vec<FilteredUser>, CommandError> {
+pub async fn get_users(state: State<'_, Mutex<AppState>>) -> Result<Vec<FilteredWorkspace>, CommandError> {
     let state = state.lock().await;
 
     let conn = state.database.lock().await;
     
-    let users = db::operations::get_users(&conn).unwrap();
+    let workspaces = db::operations::get_users(&conn).unwrap();
 
-    let filtered_users= users.into_iter().map(FilteredUser::from).collect();
+    let filtered_worspaces = workspaces.into_iter().map(FilteredWorkspace::from).collect();
 
-    Ok(filtered_users)
+    Ok(filtered_worspaces)
 }
 
 #[tauri::command]
@@ -154,16 +154,16 @@ pub async fn test(state: State<'_, Mutex<AppState>>) -> Result<(), CommandError>
 }
 
 #[tauri::command]
-pub async fn set_logged_user(state: State<'_, Mutex<AppState>>, username: String) -> Result<FilteredUser, CommandError> {
+pub async fn set_logged_user(state: State<'_, Mutex<AppState>>, username: String) -> Result<FilteredWorkspace, CommandError> {
     let mut state = state.lock().await;
     
-    let user = match username.is_empty() {
+    let workspace = match username.is_empty() {
         false => {
-            let user = {
+            let workspace = {
                 let conn = state.database.lock().await;
                 match db::operations::get_user(&conn, username).unwrap() {
                     Some(u) => u,
-                    None => return Err(CommandError { message: "User doesn't exist".to_string() })
+                    None => return Err(CommandError { message: "Workspace doesn't exist".to_string() })
                 }
             };
         

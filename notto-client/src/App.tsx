@@ -5,7 +5,7 @@ import { useGeneral } from "./store/general";
 import Home from "./components/Home";
 import LoginHome from "./components/Login/LoginHome";
 import { User } from "./components/AccountMenu";
-import LogoutConfirmModal from "./components/Login/LogoutConfirmModal";
+import LogoutConfirmModal from "./components/LogoutConfirmModal";
 
 function App() {
   const { user, setUser, allUsers, setAllUsers } = useGeneral();

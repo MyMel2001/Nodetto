@@ -39,6 +39,7 @@ export default function AccountMenu() {
         <span className="text-slate-400">
           {syncStatus === syncStatusEnum.synced ? "Synced" :
            syncStatus === syncStatusEnum.syncing ? "Syncing..." :
+           syncStatus === syncStatusEnum.offline ? "Offline" :
            "Sync Error"}
         </span>
       </div>

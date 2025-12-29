@@ -39,7 +39,7 @@ pub struct AccountEncryptionData {
 }
 
 #[derive(Debug)]
-pub struct UserEncryptionData {
+pub struct WorkspaceEncryptionData {
     pub master_encryption_key: Key<Aes256Gcm>,
     pub recovery_key_data: String,
     pub salt_recovery_data: SaltString,
@@ -47,7 +47,7 @@ pub struct UserEncryptionData {
     pub encrypted_mek_recovery: Vec<u8>,
 }
 
-pub fn create_user() -> UserEncryptionData {
+pub fn create_workspace() -> WorkspaceEncryptionData {
     //Generate encryption key
     let master_encryption_key: Key<Aes256Gcm> = Aes256Gcm::generate_key(OsRng).into();
 
@@ -79,7 +79,7 @@ pub fn create_user() -> UserEncryptionData {
     .encrypt(&mek_recovery_nonce, master_encryption_key.as_slice())
     .unwrap();
 
-    UserEncryptionData {
+    WorkspaceEncryptionData {
         master_encryption_key,
         recovery_key_data,
         salt_recovery_data,

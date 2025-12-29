@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useGeneral } from "../../store/general";
+import { useGeneral } from "../store/general";
 
 export default function LogoutConfirmModal() {
   const { showLogoutConfirm, setShowLogoutConfirm, setUser, syncStatus } = useGeneral();
