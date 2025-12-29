@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useGeneral } from "../store/general";
+import { syncStatusEnum, useGeneral } from "../store/general";
 
 export type User = {
   id: number;
@@ -8,9 +8,8 @@ export type User = {
 };
 
 export default function AccountMenu() {
-  const { user, setUser, allUsers, setAllUsers } = useGeneral();
+  const { user, setUser, allUsers, setShowLogoutConfirm, syncStatus } = useGeneral();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [syncStatus] = useState<"synced" | "syncing" | "error">("synced");
 
   async function switchAccount(username: string) {
     try {
@@ -28,25 +27,18 @@ export default function AccountMenu() {
     setUser(null);
     invoke("set_logged_user", { username: "" }).catch((e) => console.error(e));
   }
-
-  function handleLogout() {
-    // Clear user session
-    setUser(null);
-    invoke("logout").catch((e) => console.error(e));
-  }
-
   return (
     <div className="border-t border-slate-700 bg-slate-800/50">
       {/* Sync Status */}
       <div className="px-2 md:px-3 py-2 flex items-center gap-2 text-xs md:text-sm">
         <div className={`w-2 h-2 rounded-full ${
-          syncStatus === "synced" ? "bg-green-500" :
-          syncStatus === "syncing" ? "bg-yellow-500 animate-pulse" :
+          syncStatus === syncStatusEnum.synced ? "bg-green-500" :
+          syncStatus === syncStatusEnum.syncing ? "bg-yellow-500 animate-pulse" :
           "bg-red-500"
         }`} />
         <span className="text-slate-400">
-          {syncStatus === "synced" ? "Synced" :
-           syncStatus === "syncing" ? "Syncing..." :
+          {syncStatus === syncStatusEnum.synced ? "Synced" :
+           syncStatus === syncStatusEnum.syncing ? "Syncing..." :
            "Sync Error"}
         </span>
       </div>
@@ -118,7 +110,7 @@ export default function AccountMenu() {
             {/* Actions */}
             <div className="border-t border-slate-700 py-1">
               <button
-                onClick={handleLogout}
+                onClick={() => {setShowLogoutConfirm(true); setShowUserMenu(false)}}
                 className="w-full px-2 md:px-3 py-2 text-xs md:text-sm text-red-400 hover:bg-slate-700 transition-colors text-left flex items-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,9 +118,11 @@ export default function AccountMenu() {
                 </svg>
                 Logout
               </button>
+
             </div>
           </div>
         )}
+
       </div>
     </div>
   );

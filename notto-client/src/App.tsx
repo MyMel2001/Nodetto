@@ -5,6 +5,7 @@ import { useGeneral } from "./store/general";
 import Home from "./components/Home";
 import LoginHome from "./components/Login/LoginHome";
 import { User } from "./components/AccountMenu";
+import LogoutConfirmModal from "./components/Login/LogoutConfirmModal";
 
 function App() {
   const { user, setUser, allUsers, setAllUsers } = useGeneral();
@@ -35,7 +36,11 @@ function App() {
 
   return (
     <div className="h-screen w-screen">
+      {/* Modals */}
+      <LogoutConfirmModal/>
+
       {user ? <Home /> : <LoginHome />}
+
     </div>
   );
 }
