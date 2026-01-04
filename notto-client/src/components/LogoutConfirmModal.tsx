@@ -2,11 +2,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../store/general";
 
 export default function LogoutConfirmModal() {
-  const { showLogoutConfirm, setShowLogoutConfirm, setUser, syncStatus } = useGeneral();
+  const { showLogoutConfirm, setShowLogoutConfirm, setWorkspace, syncStatus } = useGeneral();
 
   function handleLogout() {
-    // Clear user session
-    setUser(null);
+    // Clear workspace session
+    setWorkspace(null);
     invoke("logout").catch((e) => console.error(e));
     
     setShowLogoutConfirm(false);

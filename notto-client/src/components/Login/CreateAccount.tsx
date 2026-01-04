@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../../store/general";
-import { User } from "../AccountMenu";
+import { Workspace } from "../AccountMenu";
 
 export default function CreateAccount() {
-  const { setUser } = useGeneral();
-  const [username, setUsername] = useState("");
+  const { setWorkspace } = useGeneral();
+  const [workspace_name, setWorkspacename] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [instance, setInstance] = useState("http://localhost:3000");
@@ -14,7 +14,7 @@ export default function CreateAccount() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleCreateAccount() {
-    if (!username || !password || !confirmPassword) {
+    if (!workspace_name || !password || !confirmPassword) {
       setError("Please fill in all fields");
       return;
     }
@@ -33,39 +33,39 @@ export default function CreateAccount() {
     setError(null);
 
     try {
-      // Check if user already exists locally
-      const users = await invoke("get_workspaces") as Array<{ id: number; username: string }>;
-      const userExists = users.some(u => u.username === username);
+      // Check if workspace already exists locally
+      const users = await invoke("get_workspaces") as Array<{ id: number; workspace_name: string }>;
+      const userExists = users.some(u => u.workspace_name === workspace_name);
 
       if (userExists) {
-        setError("Username already exists locally");
+        setError("Workspace already exists locally");
         setLoading(false);
         return;
       }
 
-      // Create local user
-      await invoke("create_workspace", { username });
+      // Create local workspace
+      await invoke("create_workspace", { workspace_name });
 
-      // Set the user
-      await invoke("set_logged_workspace", { username });
+      // Set the workspace
+      await invoke("set_logged_workspace", { workspace_name });
 
       // Create account on server
       // await invoke("sync_create_account", {
-      //   username,
+      //   workspace_name,
       //   password,
       //   instance: instance || undefined
       // });
 
       // Login after account creation
       // const success = await invoke("sync_login", {
-      //   username,
+      //   workspace_name,
       //   password,
       //   instance: instance || undefined
       // }) as boolean;
 
-      invoke("get_logged_workspace").then((u) => u as User | null).then((u) => {
+      invoke("get_logged_workspace").then((u) => u as Workspace | null).then((u) => {
         if (u) {
-          setUser(u);
+          setWorkspace(u);
         };
       }).catch((e) => console.error(e));
     } catch (e: any) {
@@ -80,14 +80,14 @@ export default function CreateAccount() {
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1">
-          Username
+          Workspace_name
         </label>
         <input
           type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={workspace_name}
+          onChange={(e) => setWorkspacename(e.target.value)}
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Choose a username"
+          placeholder="Choose a workspace_name"
           disabled={loading}
         />
       </div>

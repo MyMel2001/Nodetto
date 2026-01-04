@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { User } from "../components/AccountMenu"
+import { Workspace } from "../components/AccountMenu"
 import { error } from "@tauri-apps/plugin-log"
 
 export enum syncStatusEnum {
@@ -10,29 +10,29 @@ export enum syncStatusEnum {
 }
 
 type Store = {
-  user: User | null
-  allUsers: User[]
+  workspace: Workspace | null
+  allWorkspaces: Workspace[]
   showLogoutConfirm: boolean
   syncStatus: syncStatusEnum
 
-  setUser: (newUser: User | null) => void
-  setAllUsers: (newUsers: User[]) => void
+  setWorkspace: (newWorkspace: Workspace | null) => void
+  setAllWorkspaces: (newWorkspaces: Workspace[]) => void
   setShowLogoutConfirm: (confirm: boolean) => void
   setSyncStatus: (status: syncStatusEnum) => void
 }
 
 export const useGeneral = create<Store>(
   (set) => ({
-    user: null,
-    allUsers: [],
+    workspace: null,
+    allWorkspaces: [],
     showLogoutConfirm: false,
     syncStatus: syncStatusEnum.offline,
 
-    setUser: (newUser) => {
-      set(() => ({ user: newUser }))
+    setWorkspace: (newWorkspace) => {
+      set(() => ({ workspace: newWorkspace }))
     },
-    setAllUsers: (newUsers) => {
-      set(() => ({ allUsers: newUsers }))
+    setAllWorkspaces: (newWorkspaces) => {
+      set(() => ({ allWorkspaces: newWorkspaces }))
     },
     setShowLogoutConfirm: (confirm) => {
       set(() => ({ showLogoutConfirm: confirm }))

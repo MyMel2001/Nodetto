@@ -177,7 +177,7 @@ impl Workspace {
 
     pub fn insert(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
         conn.execute(
-            "INSERT INTO workspace (id, workspace_name, username, master_encryption_key, salt_recovery_data, mek_recovery_nonce, encrypted_mek_recovery, token, instance) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", 
+            "INSERT INTO workspace (id, workspace_name, username, master_encryption_key, salt_recovery_data, mek_recovery_nonce, encrypted_mek_recovery, token, instance) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", 
             (&self.id, &self.workspace_name, &self.username, &self.master_encryption_key.to_vec(), &self.salt_recovery_data, &self.mek_recovery_nonce, &self.encrypted_mek_recovery, &self.token, &self.instance)
         ).unwrap();
 

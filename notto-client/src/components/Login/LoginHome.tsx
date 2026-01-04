@@ -3,15 +3,15 @@ import Login from "./Login";
 import CreateAccount from "./CreateAccount";
 import { useGeneral } from "../../store/general";
 import { invoke } from "@tauri-apps/api/core";
-import { User } from "../AccountMenu";
+import { Workspace } from "../AccountMenu";
 
 export default function LoginHome() {
   const [view, setView] = useState<"login" | "create">("login");
-  const { user, setUser, allUsers, setAllUsers } = useGeneral();
+  const { workspace, setWorkspace, allWorkspaces, setAllWorkspaces } = useGeneral();
 
-  async function handleLogBack(user: User) {
-    setUser(user)
-    await invoke("set_logged_workspace", { username: user.username });
+  async function handleLogBack(workspace: Workspace) {
+    setWorkspace(workspace)
+    await invoke("set_logged_workspace", { workspace_name: workspace.workspace_name });
   }
 
   return (
@@ -22,17 +22,17 @@ export default function LoginHome() {
           <p className="text-sm md:text-base text-slate-400">Secure, encrypted note-taking</p>
         </div>
 
-        {allUsers &&
+        {allWorkspaces &&
           <>
-            <p className="text-center text-white mb-1">Select your user: </p>
+            <p className="text-center text-white mb-1">Select your workspace: </p>
             <div className="flex gap-2 justify-center mb-3 text-white">
-              {allUsers
-                .map(user => (
+              {allWorkspaces
+                .map(workspace => (
                   <button 
-                    onClick={() => handleLogBack(user)}
+                    onClick={() => handleLogBack(workspace)}
                     className="py-2 px-3 md:px-4 rounded-md font-medium text-sm md:text-base transition-colors bg-slate-600 hover:bg-blue-600 text-white"
                   >
-                    {user.username}
+                    {workspace.workspace_name}
                   </button>
                 ))
               }

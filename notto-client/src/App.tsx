@@ -4,30 +4,30 @@ import "./App.css";
 import { useGeneral } from "./store/general";
 import Home from "./components/Home";
 import LoginHome from "./components/Login/LoginHome";
-import { User } from "./components/AccountMenu";
+import { Workspace } from "./components/AccountMenu";
 import LogoutConfirmModal from "./components/LogoutConfirmModal";
 
 function App() {
-  const { user, setUser, allUsers, setAllUsers } = useGeneral();
+  const { workspace, setWorkspace, allWorkspaces, setAllWorkspaces } = useGeneral();
 
   useEffect(() => {
     // Initialize the database on app start
     invoke("init").catch((e) => console.error(e));
-    invoke("get_logged_workspace").then((u) => u as User | null).then((u) => {
+    invoke("get_logged_workspace").then((u) => u as Workspace | null).then((u) => {
       if (u) {
-        setUser(u);
+        setWorkspace(u);
       };
     }).catch((e) => console.error(e));
   }, []);
 
   useEffect(() => {
-    loadUsers();
-  }, [user]);
+    loadWorkspaces();
+  }, [workspace]);
 
-  async function loadUsers() {
+  async function loadWorkspaces() {
     try {
-      const users = await invoke("get_workspaces") as User[];
-      setAllUsers(users);
+      const users = await invoke("get_workspaces") as Workspace[];
+      setAllWorkspaces(users);
 
     } catch (e) {
       console.error("Failed to load users:", e);
@@ -39,7 +39,7 @@ function App() {
       {/* Modals */}
       <LogoutConfirmModal/>
 
-      {user ? <Home /> : <LoginHome />}
+      {workspace ? <Home /> : <LoginHome />}
 
     </div>
   );

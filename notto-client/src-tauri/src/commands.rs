@@ -118,17 +118,17 @@ pub async fn get_all_notes_metadata(state: State<'_, Mutex<AppState>>, id_worksp
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn create_workspace(state: State<'_, Mutex<AppState>>, username: String) -> Result<(), CommandError> {
+pub async fn create_workspace(state: State<'_, Mutex<AppState>>, workspace_name: String) -> Result<(), CommandError> {
     let mut state = state.lock().await;
 
     let workspace = {
         let conn = state.database.lock().await;
-        db::operations::create_workspace(&conn, username).unwrap()
+        db::operations::create_workspace(&conn, workspace_name).unwrap()
     };
 
     state.workspace = Some(workspace);
 
-    debug!("user created");
+    debug!("workspace created");
     
     Ok(())
 }

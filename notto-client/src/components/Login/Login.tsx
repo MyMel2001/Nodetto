@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../../store/general";
-import { User } from "../AccountMenu";
+import { Workspace } from "../AccountMenu";
 
 export default function Login() {
-  const { setUser } = useGeneral();
-  const [username, setUsername] = useState("");
+  const { setWorkspace } = useGeneral();
+  const [workspace_name, setWorkspacename] = useState("");
   const [password, setPassword] = useState("");
   const [instance, setInstance] = useState("http://localhost:3000");
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -13,7 +13,7 @@ export default function Login() {
   const [error, setError] = useState<string | null>(null);
 
   async function handleLogin() {
-    if (!username || !password || !instance) {
+    if (!workspace_name || !password || !instance) {
       setError("Please fill in all fields");
       return;
     }
@@ -22,19 +22,21 @@ export default function Login() {
     setError(null);
 
     try {
-      // Login to server
-      await invoke("sync_login", {
-        username,
-        password,
-        instance
-      }).catch((e: any) => {
-        setError(e.message || "Login failed");
-        console.error("login failed:", e);
-      });
+      //TODO:  Login to server
+      // await invoke("sync_login", {
+      //   workspace_name,
+      //   password,
+      //   instance
+      // }).catch((e: any) => {
+      //   setError(e.message || "Login failed");
+      //   console.error("login failed:", e);
+      // });
 
-      await invoke("get_logged_workspace").then((u) => u as User | null).then((u) => {
+      await invoke("set_logged_workspace", { workspace_name }).catch((e) => console.error(e));
+
+      await invoke("get_logged_workspace").then((u) => u as Workspace | null).then((u) => {
         if (u) {
-          setUser(u);
+          setWorkspace(u);
         };
       }).catch((e) => console.error(e));
 
@@ -50,14 +52,14 @@ export default function Login() {
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1">
-          Username
+          Workspace name
         </label>
         <input
           type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={workspace_name}
+          onChange={(e) => setWorkspacename(e.target.value)}
           className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-md text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter your username"
+          placeholder="Enter your workspace name"
           disabled={loading}
         />
       </div>
