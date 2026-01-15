@@ -1,12 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import "./App.css";
 import { useGeneral } from "./store/general";
 import Home from "./components/Home";
-import LoginHome from "./components/Login/LoginHome";
 import { Workspace } from "./components/AccountMenu";
-import LogoutConfirmModal from "./components/LogoutConfirmModal";
-import { info } from "@tauri-apps/plugin-log";
+import LogoutWorkspaceConfirmModal from "./components/LogoutWorkspaceConfirmModal";
 
 function App() {
   const { workspace, setWorkspace, setAllWorkspaces } = useGeneral();
@@ -65,7 +63,7 @@ function App() {
   return (
     <div className="h-screen w-screen">
       {/* Modals */}
-      <LogoutConfirmModal />
+      <LogoutWorkspaceConfirmModal/>
 
       {workspace ? <Home /> : <div className="text-center bg-slate-800">Creating workspace...</div>}
 

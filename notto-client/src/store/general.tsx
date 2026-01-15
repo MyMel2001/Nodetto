@@ -11,12 +11,12 @@ export enum syncStatusEnum {
 type Store = {
   workspace: Workspace | null
   allWorkspaces: Workspace[]
-  showLogoutConfirm: boolean
+  showLogoutWorkspaceConfirm: boolean
   syncStatus: syncStatusEnum
 
   setWorkspace: (newWorkspace: Workspace | null) => void
   setAllWorkspaces: (newWorkspaces: Workspace[]) => void
-  setShowLogoutConfirm: (confirm: boolean) => void
+  setShowLogoutWorkspaceConfirm: (confirm: boolean) => void
   setSyncStatus: (status: syncStatusEnum) => void
 }
 
@@ -24,7 +24,7 @@ export const useGeneral = create<Store>(
   (set) => ({
     workspace: null,
     allWorkspaces: [],
-    showLogoutConfirm: false,
+    showLogoutWorkspaceConfirm: false,
     syncStatus: syncStatusEnum.offline,
 
     setWorkspace: (newWorkspace) => {
@@ -33,8 +33,8 @@ export const useGeneral = create<Store>(
     setAllWorkspaces: (newWorkspaces) => {
       set(() => ({ allWorkspaces: newWorkspaces }))
     },
-    setShowLogoutConfirm: (confirm) => {
-      set(() => ({ showLogoutConfirm: confirm }))
+    setShowLogoutWorkspaceConfirm: (confirm) => {
+      set(() => ({ showLogoutWorkspaceConfirm: confirm }))
     },
     setSyncStatus: (status) => {
       set(() => ({ syncStatus: status }))

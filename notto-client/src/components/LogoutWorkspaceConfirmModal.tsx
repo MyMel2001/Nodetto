@@ -1,24 +1,31 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../store/general";
 
-export default function LogoutConfirmModal() {
-  const { showLogoutConfirm, setShowLogoutConfirm, setWorkspace, syncStatus } = useGeneral();
+export default function LogoutWorkspaceConfirmModal() {
+  const { showLogoutWorkspaceConfirm, setShowLogoutWorkspaceConfirm, setWorkspace, syncStatus, allWorkspaces } = useGeneral();
 
-  function handleLogout() {
+  async function handleLogout() {
     // Clear workspace session
-    setWorkspace(null);
-    invoke("logout").catch((e) => console.error(e));
+    await invoke("logout").catch((e) => console.error(e));
+
+    //TODO: This becomes chaotic, logout/login function are everywhere somehow different from each other
+    if(allWorkspaces.length > 0) {
+      setWorkspace(allWorkspaces[0]);
+    }else {
+        await invoke("create_workspace", { workspace_name: "workspace 1" }).catch((e) => console.error(e));
+        await invoke("set_logged_workspace", { workspace_name: "workspace 1" });
+    }
     
-    setShowLogoutConfirm(false);
+    setShowLogoutWorkspaceConfirm(false);
   }
 
   return (
     <>
-    {showLogoutConfirm &&
+    {showLogoutWorkspaceConfirm &&
 
       <div className="min-h-screen min-w-screen flex items-center justify-center p-4 fixed z-50">
         <div className="fixed inset-0 backdrop-blur-sm"
-          onClick={() => setShowLogoutConfirm(false)}
+          onClick={() => setShowLogoutWorkspaceConfirm(false)}
         />
 
         <div className="relative bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-8">
@@ -44,7 +51,7 @@ export default function LogoutConfirmModal() {
           </button>
 
           <button
-            onClick={() => setShowLogoutConfirm(false)}
+            onClick={() => setShowLogoutWorkspaceConfirm(false)}
             className="w-full px-6 py-3 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-colors"
           >
             Cancel
