@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { syncStatusEnum, useGeneral } from "../store/general";
-import { info } from "@tauri-apps/plugin-log";
+import { listen } from "@tauri-apps/api/event";
 
 export type Workspace = {
   id: number;
@@ -9,14 +9,22 @@ export type Workspace = {
 };
 
 export default function AccountMenu() {
-  const { workspace, setWorkspace, allWorkspaces, setShowLogoutWorkspaceConfirm, syncStatus } = useGeneral();
+  const { workspace, setWorkspace, allWorkspaces, setShowLogoutWorkspaceConfirm, setSyncStatus, syncStatus } = useGeneral();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    listen<syncStatusEnum>('sync-status', (event) => {
+      console.log(event.payload)
+      setSyncStatus(event.payload)
+    })
+  }, []) 
 
   // Handle click outside
+  //TODO: do this better
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       // Check if click is outside workspace menu
@@ -70,14 +78,15 @@ export default function AccountMenu() {
     <div className="border-t border-slate-700 bg-slate-800/50">
       {/* Sync Status */}
       <div className="px-2 md:px-3 py-2 flex items-center gap-2 text-xs md:text-sm">
-        <div className={`w-2 h-2 rounded-full ${syncStatus === syncStatusEnum.synced ? "bg-green-500" :
-            syncStatus === syncStatusEnum.syncing ? "bg-yellow-500 animate-pulse" :
+        <div className={`w-2 h-2 rounded-full ${syncStatus === syncStatusEnum.Synched ? "bg-green-500" :
+            syncStatus === syncStatusEnum.Syncing ? "bg-yellow-500 animate-pulse" :
               "bg-red-500"
           }`} />
         <span className="text-slate-400">
-          {syncStatus === syncStatusEnum.synced ? "Synced" :
-            syncStatus === syncStatusEnum.syncing ? "Syncing..." :
-              syncStatus === syncStatusEnum.offline ? "Offline" :
+          {syncStatus === syncStatusEnum.Synched ? "Synched" :
+            syncStatus === syncStatusEnum.Syncing ? "Syncing..." :
+            syncStatus === syncStatusEnum.Offline ? "Offline" :
+            syncStatus === syncStatusEnum.NotConnected ? "Not connected" :
                 "Sync Error"}
         </span>
       </div>

@@ -2,10 +2,11 @@ import { create } from "zustand"
 import { Workspace } from "../components/AccountMenu"
 
 export enum syncStatusEnum {
-  synced = "synced",
-  syncing = "sincing",
-  error = "error",
-  offline = "offline"
+  Synched = "Synched",
+  Syncing = "Syncing", 
+  Error = "Error", 
+  Offline = "Offline",
+  NotConnected = "NotConnected"
 }
 
 type Store = {
@@ -25,7 +26,7 @@ export const useGeneral = create<Store>(
     workspace: null,
     allWorkspaces: [],
     showLogoutWorkspaceConfirm: false,
-    syncStatus: syncStatusEnum.offline,
+    syncStatus: syncStatusEnum.Offline,
 
     setWorkspace: (newWorkspace) => {
       set(() => ({ workspace: newWorkspace }))
