@@ -134,6 +134,9 @@ export default function AccountMenu() {
   }
 
   async function addWorkspace() {
+    console.log("all workspaces are:", allWorkspaces);
+    console.log("adding workspace:", allWorkspaces.length + 1)
+
     let newName = "workspace " + (allWorkspaces.length + 1)
 
     await invoke("create_workspace", { workspace_name: newName }).catch((e) => console.error(e));
@@ -222,7 +225,7 @@ export default function AccountMenu() {
                     onClick={() => addWorkspace()}
                     className="w-full px-2 md:px-3 py-2 flex items-center gap-2 md:gap-3 hover:bg-slate-700 transition-colors text-left"
                   >
-                    <span className="text-xs md:text-sm text-white truncate">Add another account</span>
+                    <span className="text-xs md:text-sm text-white truncate">Add another workspace</span>
                   </button>
                 </div>
 
