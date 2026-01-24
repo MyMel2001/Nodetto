@@ -103,6 +103,7 @@ export default function AccountMenu() {
         await invoke("sync_login", { username, password, instance: instance });
       } else {
         await invoke("sync_create_account", { username ,password, instance: instance });
+        await invoke("sync_login", { username, password, instance: instance });
       }
       
       setShowAuthMenu(false);
