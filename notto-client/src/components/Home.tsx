@@ -85,7 +85,7 @@ export default function Home() {
   );
 
   return (
-    <div className="flex h-screen bg-slate-900">
+    <div className="flex h-screen pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-slate-900">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -96,7 +96,7 @@ export default function Home() {
 
       {/* Sidebar */}
       <div className={`
-        fixed lg:relative inset-y-0 left-0 z-40
+        fixed lg:relative inset-y-0 left-0 z-40 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
         w-80 bg-slate-800 border-r border-slate-700 flex flex-col
         transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}

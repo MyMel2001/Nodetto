@@ -4,7 +4,7 @@ import { trace } from "@tauri-apps/plugin-log";
 import { Workspace } from "./AccountMenu";
 
 export default function LogoutWorkspaceConfirmModal() {
-  const { showLogoutWorkspaceConfirm, setShowLogoutWorkspaceConfirm, setWorkspace, syncStatus, allWorkspaces, setAllWorkspaces } = useGeneral();
+  const { showLogoutWorkspaceConfirm, setShowLogoutWorkspaceConfirm, setWorkspace, syncStatus, setAllWorkspaces } = useGeneral();
 
   async function handleLogout() {
     // Clear workspace session
@@ -40,7 +40,7 @@ export default function LogoutWorkspaceConfirmModal() {
     <>
       {showLogoutWorkspaceConfirm &&
 
-        <div className="min-h-screen min-w-screen flex items-center justify-center p-4 fixed z-50">
+        <div className="min-h-screen min-w-screen pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] flex items-center justify-center p-4 fixed z-50">
           <div className="fixed inset-0 backdrop-blur-sm"
             onClick={() => setShowLogoutWorkspaceConfirm(false)}
           />
