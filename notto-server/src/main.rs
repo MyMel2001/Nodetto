@@ -67,6 +67,7 @@ async fn send_note(State(pool): State<Pool>, Json(sent_notes): Json<shared::Sent
     let mut result: Vec<SentNotesResult> = vec![];
     
     for mut note in notes {
+        println!("The user sent us some notes");
         note.id_user = Some(user.id.unwrap());
 
         match note.select(&mut conn).await {
@@ -94,8 +95,6 @@ async fn select_notes(
     State(pool): State<Pool>,
     Query(params): Query<shared::SelectNoteParams>,
 ) -> Result<Json<Vec<shared::Note>>, StatusCode> {
-    println!("select_notes params: {params:?}");
-
     let mut conn = pool.get_conn().await.unwrap();
     user_verify(&mut conn, params.username.clone(), hex::decode(params.token).unwrap()).await?;
 
@@ -103,11 +102,11 @@ async fn select_notes(
 
     let notes = schema::Note::select_all_from_user(&mut conn, user.id.unwrap(), params.updated_at).await;
 
-    println!("all notes from user: {notes:?}");
+    let notes: Vec<shared::Note> = notes.into_iter().map(|note| note.into()).collect();
 
-    let notes = notes.into_iter().map(|note| note.into()).collect();
-
-    println!("notes sent back : {notes:?}");
+    if !notes.is_empty() {
+        println!("Some notes are sent to user");
+    } 
 
     Ok(Json(notes))
 }

@@ -108,8 +108,6 @@ pub async fn get_note(
     )
     .unwrap();
 
-    debug!("sending note to client: {:?}", note);
-
     Ok(note)
 }
 
