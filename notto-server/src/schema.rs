@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Note {
-    pub uuid: Vec<u8>,
+    pub uuid: String,
     pub id_user: Option<u32>, //Server id user
     pub title: String,
     pub content: Vec<u8>,

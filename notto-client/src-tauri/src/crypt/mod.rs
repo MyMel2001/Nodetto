@@ -15,7 +15,7 @@ use crate::db::schema;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NoteData {
-    pub id: Vec<u8>,
+    pub id: String,
     pub title: String,
     pub content: String,
     pub updated_at: i64,

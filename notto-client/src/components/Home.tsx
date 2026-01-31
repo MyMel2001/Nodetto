@@ -2,17 +2,17 @@ import { useEffect, useState } from "react";
 import { useGeneral } from "../store/general";
 import { invoke } from "@tauri-apps/api/core";
 import AccountMenu from "./AccountMenu";
-import { trace } from "@tauri-apps/plugin-log";
+import { debug, trace } from "@tauri-apps/plugin-log";
 import { listen } from "@tauri-apps/api/event";
 
 type Note = {
-  id: number;
+  id: string;
   title: string;
   updated_at: Date;
 };
 
 type NoteContent = {
-  id: number;
+  id: string;
   title: string;
   content: string;
   updated_at: Date;
@@ -24,12 +24,34 @@ export default function Home() {
   const [currentNote, setCurrentNote] = useState<NoteContent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   useEffect(() => {
+    let unlisten: (() => void) | undefined;
+
     listen<Note[]>('new_note_metadata', (event) => {
       setNotes(event.payload)
-    })
-  }, [])
+
+      if (currentNote) {
+        const note = notes?.find(note => note.id == currentNote.id)
+
+        if (!note) {
+          //Current note is probably deleted
+          //TODO: handle.
+
+        } else if (note.updated_at != currentNote.updated_at) {
+          //Note has been modified
+          get_note(note.id)
+        }
+      }
+    }).then(unlistenFn => {
+      unlisten = unlistenFn;
+    });
+
+    return () => {
+      if (unlisten)
+        unlisten()
+    }
+  }, [currentNote])
 
   useEffect(() => {
     get_notes_metadata();
@@ -52,9 +74,12 @@ export default function Home() {
     get_notes_metadata();
   }
 
-  async function get_note(id: number) {
+  async function get_note(id: string) {
     await invoke("get_note", { id: id })
-      .then((note) => setCurrentNote(note as NoteContent))
+      .then((note) => {
+        setCurrentNote(note as NoteContent);
+        trace!("note received: " + (note as NoteContent).id)
+      })
       .catch((e) => console.error(e));
     setSidebarOpen(false); // Close sidebar on mobile after selecting note
   }
@@ -163,8 +188,8 @@ export default function Home() {
                   key={note.id}
                   onClick={() => get_note(note.id)}
                   className={`w-full p-3 mb-1 rounded-lg text-left transition-colors ${currentNote?.id === note.id
-                      ? "bg-blue-600 text-white"
-                      : "bg-slate-700/50 text-slate-200 hover:bg-slate-700"
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-700/50 text-slate-200 hover:bg-slate-700"
                     }`}
                 >
                   <div className="font-medium truncate mb-1">{note.title}</div>

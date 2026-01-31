@@ -14,7 +14,7 @@ pub fn create_note(conn: &Connection, id_workspace: u32, title: String, mek: Key
     let (content, nonce) = crypt::encrypt_note("".to_string(), mek).unwrap(); //Content empty because it's first note
 
     let note = Note {
-        uuid: Uuid::new_v7(uuid::Timestamp::now(NoContext)).as_bytes().to_vec(),
+        uuid: Uuid::new_v7(uuid::Timestamp::now(NoContext)).to_string(),
         id_workspace: Some(id_workspace),
         content,
         nonce,
@@ -28,7 +28,7 @@ pub fn create_note(conn: &Connection, id_workspace: u32, title: String, mek: Key
     Ok(())
 }
 
-pub fn get_note(conn: &Connection, uuid: Vec<u8>, mek: Key<Aes256Gcm>) -> Result<NoteData, Box<dyn std::error::Error>> {
+pub fn get_note(conn: &Connection, uuid: String, mek: Key<Aes256Gcm>) -> Result<NoteData, Box<dyn std::error::Error>> {
     let note = Note::select(conn, uuid).unwrap().unwrap();
 
     //TODO: decrypt elsewhere?

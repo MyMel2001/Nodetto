@@ -21,7 +21,7 @@ pub struct User {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Note {
-    pub uuid: Vec<u8>,
+    pub uuid: String,
     pub title: String,
     pub content: Vec<u8>,
     pub nonce: Vec<u8>,
@@ -50,7 +50,7 @@ pub enum NoteStatus {
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct SentNotesResult {
-    pub uuid: Vec<u8>,
+    pub uuid: String,
     pub status: NoteStatus
 }
 

@@ -9,7 +9,7 @@ use rusqlite::Error::QueryReturnedNoRows;
 
 #[derive(Debug)]
 pub struct Note {
-    pub uuid: Vec<u8>,
+    pub uuid: String,
     pub id_workspace: Option<u32>,
     pub title: String,
     pub content: Vec<u8>, //Serialized encrypted content.
@@ -62,7 +62,7 @@ impl Note {
         Ok(())
     }
 
-    pub fn select(conn: &Connection, uuid: Vec<u8>) -> Result<Option<Self>, Box<dyn std::error::Error>> {
+    pub fn select(conn: &Connection, uuid: String) -> Result<Option<Self>, Box<dyn std::error::Error>> {
         let note = match conn.query_one(
             "SELECT * FROM note WHERE uuid = ?", 
             (uuid,),

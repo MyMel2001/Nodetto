@@ -49,7 +49,7 @@ pub struct NoteMetadata {
 impl From<Note> for NoteMetadata {
     fn from(note: Note) -> Self {
         NoteMetadata {
-            id: Uuid::from_slice(note.uuid.as_slice()).unwrap().to_string(),
+            id: note.uuid,
             title: note.title,
             updated_at: note.updated_at * 1000, //Convert to TS timestamps
         }
@@ -103,10 +103,12 @@ pub async fn get_note(
 
     let note = db::operations::get_note(
         &conn,
-        Uuid::parse_str(&id).unwrap().as_bytes().to_vec(),
+        Uuid::parse_str(&id).unwrap().to_string(),
         state.workspace.clone().unwrap().master_encryption_key,
     )
     .unwrap();
+
+    debug!("sending note to client: {:?}", note);
 
     Ok(note)
 }
