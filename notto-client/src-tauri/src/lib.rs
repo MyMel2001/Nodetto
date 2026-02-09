@@ -67,6 +67,7 @@ pub fn run() {
             commands::sync_login,
             commands::sync_logout,
             commands::logout,
+            commands::get_version
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

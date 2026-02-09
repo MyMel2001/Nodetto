@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useGeneral } from "../store/general";
 import { invoke } from "@tauri-apps/api/core";
 import AccountMenu from "./AccountMenu";
-import { debug, trace } from "@tauri-apps/plugin-log";
+import { trace } from "@tauri-apps/plugin-log";
 import { listen } from "@tauri-apps/api/event";
 
 type Note = {

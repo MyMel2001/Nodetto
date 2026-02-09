@@ -375,3 +375,8 @@ pub async fn logout(state: State<'_, Mutex<AppState>>) -> Result<(), CommandErro
 
     Ok(())
 }
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_version(state: State<'_, Mutex<AppState>>) -> Result<&str, CommandError> { 
+    return Ok(env!("CARGO_PKG_VERSION"))
+}

@@ -24,6 +24,7 @@ export default function AccountMenu() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
+  const [versionNumber, setVersionNumber] = useState("");
 
   const accountMenuRef = useRef<HTMLDivElement>(null);
   const workspaceMenuRef = useRef<HTMLDivElement>(null);
@@ -34,6 +35,10 @@ export default function AccountMenu() {
       trace("sync status: " + event.payload)
       setSyncStatus(event.payload)
     })
+  }, [])
+
+  useEffect(() => {
+    invoke("get_version").then((u) => u as string).then((u) => { setVersionNumber(u) });
   }, [])
 
   // Handle click outside
@@ -155,6 +160,9 @@ export default function AccountMenu() {
 
   return (
     <div className="border-t border-slate-700 bg-slate-800/50">
+      {/* Version number */}
+      <div className="text-center">version: {versionNumber}</div>
+
       {/* Sync Status */}
       <div className="px-2 md:px-3 py-2 flex items-center gap-2 text-xs md:text-sm">
         <div className={`w-2 h-2 rounded-full ${syncStatus === syncStatusEnum.Synched ? "bg-green-500" :
