@@ -9,6 +9,7 @@ type Note = {
   id: string;
   title: string;
   updated_at: Date;
+  deleted: boolean;
 };
 
 type NoteContent = {
@@ -16,6 +17,7 @@ type NoteContent = {
   title: string;
   content: string;
   updated_at: Date;
+  deleted: boolean;
 };
 
 export default function Home() {
@@ -90,6 +92,7 @@ export default function Home() {
       title: currentNote?.title!,
       updated_at: currentNote?.updated_at!,
       content: content,
+      deleted: currentNote?.deleted!,
     };
 
     setCurrentNote(note);
@@ -103,6 +106,7 @@ export default function Home() {
       title: title!,
       updated_at: currentNote?.updated_at!,
       content: currentNote?.content!,
+      deleted: currentNote?.deleted!,
     };
 
     setCurrentNote(note);
@@ -112,12 +116,14 @@ export default function Home() {
     get_notes_metadata();
   }
 
-  const filteredNotes = notes?.filter((note) =>
-    note.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredNotes = notes?.filter((note) => 
+    !note.deleted && note.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   async function delete_note(id: string) {
     await invoke("delete_note", { id }).catch((e) => console.error(e));
+
+    get_notes_metadata();
   }
 
   return (
