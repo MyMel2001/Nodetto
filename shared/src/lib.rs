@@ -26,6 +26,7 @@ pub struct Note {
     pub content: Vec<u8>,
     pub nonce: Vec<u8>,
     pub updated_at: i64,
+    pub deleted: bool
 }
 
 #[derive(Deserialize, Serialize, Debug)]

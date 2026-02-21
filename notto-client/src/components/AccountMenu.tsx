@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { syncStatusEnum, useGeneral } from "../store/general";
+import { useModals } from "../store/modals";
 import { listen } from "@tauri-apps/api/event";
 import { trace } from "@tauri-apps/plugin-log";
 
@@ -12,7 +13,8 @@ export type Workspace = {
 type AuthMode = "login" | "register";
 
 export default function AccountMenu() {
-  const { workspace, setWorkspace, allWorkspaces, setShowLogoutWorkspaceConfirm, setSyncStatus, syncStatus } = useGeneral();
+  const { workspace, setWorkspace, allWorkspaces, setSyncStatus, syncStatus } = useGeneral();
+  const { setShowLogoutWorkspaceConfirm } = useModals();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showWorkspaceMenu, setShowWorkspaceMenu] = useState(false);
   const [showAuthMenu, setShowAuthMenu] = useState(false);

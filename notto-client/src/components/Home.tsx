@@ -1,26 +1,22 @@
 import { useEffect, useState } from "react";
-import { useGeneral } from "../store/general";
+import { useGeneral, Note } from "../store/general";
+import { useModals } from "../store/modals";
 import { invoke } from "@tauri-apps/api/core";
 import AccountMenu from "./AccountMenu";
 import { trace } from "@tauri-apps/plugin-log";
 import { listen } from "@tauri-apps/api/event";
-
-type Note = {
-  id: string;
-  title: string;
-  updated_at: Date;
-};
 
 type NoteContent = {
   id: string;
   title: string;
   content: string;
   updated_at: Date;
+  deleted: boolean;
 };
 
 export default function Home() {
-  const { workspace } = useGeneral();
-  const [notes, setNotes] = useState<Note[] | null>(null);
+  const { workspace, notes, setNotes } = useGeneral();
+  const { setShowDeleteNoteConfirm } = useModals();
   const [currentNote, setCurrentNote] = useState<NoteContent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -57,12 +53,18 @@ export default function Home() {
     get_notes_metadata();
   }, [workspace]);
 
+  // Clear currentNote if it was removed from the notes list (e.g. deleted via modal)
+  useEffect(() => {
+    if (currentNote && !notes.find((n) => n.id === currentNote.id)) {
+      setCurrentNote(null);
+    }
+  }, [notes]);
+
   function get_notes_metadata() {
     if (workspace) {
-
       trace("getting notes metadata from: " + workspace?.id + " - " + workspace?.workspace_name)
       invoke("get_all_notes_metadata", { id_workspace: workspace?.id })
-        .then((notes) => setNotes(notes as Note[]))
+        .then((fetched) => setNotes(fetched as Note[]))
         .catch((e) => console.error(e));
     }
   }
@@ -90,6 +92,7 @@ export default function Home() {
       title: currentNote?.title!,
       updated_at: currentNote?.updated_at!,
       content: content,
+      deleted: currentNote?.deleted!,
     };
 
     setCurrentNote(note);
@@ -103,6 +106,7 @@ export default function Home() {
       title: title!,
       updated_at: currentNote?.updated_at!,
       content: currentNote?.content!,
+      deleted: currentNote?.deleted!,
     };
 
     setCurrentNote(note);
@@ -112,8 +116,8 @@ export default function Home() {
     get_notes_metadata();
   }
 
-  const filteredNotes = notes?.filter((note) =>
-    note.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredNotes = notes.filter((note) =>
+    !note.deleted && note.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -183,21 +187,52 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto">
           {filteredNotes && filteredNotes.length > 0 ? (
             <div className="p-2">
-              {filteredNotes.map((note) => (
-                <button
-                  key={note.id}
-                  onClick={() => get_note(note.id)}
-                  className={`w-full p-3 mb-1 rounded-lg text-left transition-colors ${currentNote?.id === note.id
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-700/50 text-slate-200 hover:bg-slate-700"
+              {filteredNotes.map((note) => {
+                const isActive = currentNote?.id === note.id;
+
+                return (
+                  <div
+                    key={note.id}
+                    className={`group w-full p-3 mb-1 rounded-lg text-left transition-colors flex items-center gap-2 ${
+                      isActive
+                        ? "bg-blue-600 text-white"
+                        : "bg-slate-700/50 text-slate-200 hover:bg-slate-700"
                     }`}
-                >
-                  <div className="font-medium truncate mb-1">{note.title}</div>
-                  <div className="text-xs opacity-70">
-                    {new Date(note.updated_at).toLocaleDateString()}
+                  >
+                    <button
+                      onClick={() => get_note(note.id)}
+                      className="flex-1 text-left min-w-0"
+                    >
+                      <div className="font-medium truncate mb-1">{note.title}</div>
+                      <div className="text-xs opacity-70">
+                        {new Date(note.updated_at).toLocaleDateString()}
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDeleteNoteConfirm(true, note.id);
+                      }}
+                      className={`shrink-0 p-1 rounded transition-colors ${
+                        isActive
+                          ? "text-blue-200 hover:text-red-300"
+                          : "text-slate-500 hover:text-red-400"
+                      }`}
+                      title="Delete note"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-slate-500 text-sm p-4 text-center">

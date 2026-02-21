@@ -20,7 +20,8 @@ pub fn create_note(conn: &Connection, id_workspace: u32, title: String, mek: Key
         nonce,
         title,
         updated_at: Local::now().to_utc().timestamp(),
-        synched: false
+        synched: false,
+        deleted: false,
     };
 
     note.insert(conn,).unwrap();
@@ -53,6 +54,7 @@ pub fn update_note(conn: &Connection, note_data: NoteData, mek: Key<Aes256Gcm>) 
     note.nonce = nonce;
     note.updated_at = Local::now().to_utc().timestamp();
     note.synched = false;
+    note.deleted = note_data.deleted;
     
     note.update(conn).unwrap();
     
@@ -139,7 +141,7 @@ pub fn logout_workspace(conn: &Connection, workspace_name: String) {
     let workspace = Workspace::select(conn, workspace_name).unwrap().unwrap();
 
     //TODO: This doesn't feel right without stopping sync
-    Note::delete_from_workspace(conn, workspace.id.unwrap());
+    Note::delete_all_from_workspace(conn, workspace.id.unwrap());
     workspace.delete(conn).unwrap();
 
     Common::delete(conn, "logged".to_string());

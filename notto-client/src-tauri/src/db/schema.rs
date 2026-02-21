@@ -15,7 +15,8 @@ pub struct Note {
     pub content: Vec<u8>, //Serialized encrypted content.
     pub nonce: Vec<u8>, //Nonce used to decrypt data.
     pub updated_at: i64,
-    pub synched: bool //true: note has already been sent with server
+    pub synched: bool, //true: note has already been sent with server
+    pub deleted: bool,
 }
 
 impl From<shared::Note> for Note {
@@ -27,7 +28,8 @@ impl From<shared::Note> for Note {
             content: note.content,
             nonce: note.nonce,
             updated_at: note.updated_at,
-            synched: true
+            synched: true,
+            deleted: note.deleted
         }
     }
 }
@@ -40,6 +42,7 @@ impl Into<shared::Note> for Note {
             content: self.content,
             nonce: self.nonce,
             updated_at: self.updated_at,
+            deleted: self.deleted
         }
     }
 }
@@ -54,7 +57,8 @@ impl Note {
                 content BLOB,
                 nonce BLOB,
                 updated_at INTEGER,
-                synched INTEGER NOT NULL
+                synched INTEGER NOT NULL,
+                deleted INTEGER NOT NULL
             )", 
             (), // empty list of parameters.
         ).unwrap();
@@ -74,7 +78,8 @@ impl Note {
                     content: row.get(3)?,
                     nonce: row.get(4)?,
                     updated_at: row.get(5)?,
-                    synched: row.get(6)?
+                    synched: row.get(6)?,
+                    deleted: row.get(7)?,
                 })
             }
         ) {
@@ -87,16 +92,16 @@ impl Note {
 
     pub fn insert(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
         conn.execute(
-            "INSERT INTO note (uuid, title, content, nonce, id_workspace, updated_at, synched) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", 
-            (&self.uuid, &self.title, &self.content, &self.nonce, &self.id_workspace, &self.updated_at, &self.synched)
+            "INSERT INTO note (uuid, title, content, nonce, id_workspace, updated_at, synched, deleted) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", 
+            (&self.uuid, &self.title, &self.content, &self.nonce, &self.id_workspace, &self.updated_at, &self.synched, &self.deleted)
         ).unwrap();
 
         Ok(())
     }
 
     pub fn update(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-        conn.execute("UPDATE note SET title = ?, content = ?, nonce = ?, updated_at = ?, synched = ? WHERE uuid = ?",
-            (&self.title, &self.content, &self.nonce, &self.updated_at, &self.synched, &self.uuid))?;
+        conn.execute("UPDATE note SET title = ?, content = ?, nonce = ?, updated_at = ?, synched = ?, deleted = ? WHERE uuid = ?",
+            (&self.title, &self.content, &self.nonce, &self.updated_at, &self.synched, &self.deleted, &self.uuid))?;
 
         Ok(())
     }
@@ -115,6 +120,7 @@ impl Note {
                     nonce: row.get(4)?,
                     updated_at: row.get(5)?,
                     synched: row.get(6)?,
+                    deleted: row.get(7)?,
                 })
             }
         ).unwrap();
@@ -128,7 +134,7 @@ impl Note {
         Ok(notes)
     }
 
-    pub fn delete_from_workspace(conn: &Connection, id_workspace: u32) {
+    pub fn delete_all_from_workspace(conn: &Connection, id_workspace: u32) {
         conn.execute("DELETE FROM note WHERE id_workspace = ?", (id_workspace, )).unwrap();
     }
 }

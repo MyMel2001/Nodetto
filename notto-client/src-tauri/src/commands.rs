@@ -44,6 +44,7 @@ pub struct NoteMetadata {
     pub id: String,
     pub title: String,
     pub updated_at: i64,
+    pub deleted: bool
 }
 
 impl From<Note> for NoteMetadata {
@@ -52,6 +53,7 @@ impl From<Note> for NoteMetadata {
             id: note.uuid,
             title: note.title,
             updated_at: note.updated_at * 1000, //Convert to TS timestamps
+            deleted: note.deleted
         }
     }
 }
@@ -305,7 +307,7 @@ pub async fn sync_login(
         db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap()
     };
 
-    if !notes.is_empty(){
+    if !notes.is_empty() {
         //Decrypt note using old mek
         let notes: Vec<NoteData> = notes
             .into_iter()
@@ -377,6 +379,32 @@ pub async fn logout(state: State<'_, Mutex<AppState>>) -> Result<(), CommandErro
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn get_version(state: State<'_, Mutex<AppState>>) -> Result<&str, CommandError> { 
-    return Ok(env!("CARGO_PKG_VERSION"))
+pub async fn get_version(state: State<'_, Mutex<AppState>>) -> Result<&str, CommandError> {
+    return Ok(env!("CARGO_PKG_VERSION"));
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn delete_note(
+    state: State<'_, Mutex<AppState>>,
+    id: String,
+) -> Result<(), CommandError> {
+    let state = state.lock().await;
+    let conn = state.database.lock().await;
+
+    let mut note = db::operations::get_note(
+        &conn,
+        id,
+        state.workspace.clone().unwrap().master_encryption_key,
+    )
+    .unwrap();
+    note.deleted = true;
+
+    db::operations::update_note(
+        &conn,
+        note,
+        state.workspace.clone().unwrap().master_encryption_key,
+    )
+    .unwrap();
+
+    Ok(())
 }
