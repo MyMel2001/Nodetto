@@ -3,21 +3,28 @@ import { Workspace } from "../components/AccountMenu"
 
 export enum syncStatusEnum {
   Synched = "Synched",
-  Syncing = "Syncing", 
-  Error = "Error", 
+  Syncing = "Syncing",
+  Error = "Error",
   Offline = "Offline",
   NotConnected = "NotConnected"
 }
 
+export type Note = {
+  id: string;
+  title: string;
+  updated_at: Date;
+  deleted: boolean;
+};
+
 type Store = {
   workspace: Workspace | null
   allWorkspaces: Workspace[]
-  showLogoutWorkspaceConfirm: boolean
+  notes: Note[]
   syncStatus: syncStatusEnum
 
   setWorkspace: (newWorkspace: Workspace | null) => void
   setAllWorkspaces: (newWorkspaces: Workspace[]) => void
-  setShowLogoutWorkspaceConfirm: (confirm: boolean) => void
+  setNotes: (notes: Note[]) => void
   setSyncStatus: (status: syncStatusEnum) => void
 }
 
@@ -25,7 +32,7 @@ export const useGeneral = create<Store>(
   (set) => ({
     workspace: null,
     allWorkspaces: [],
-    showLogoutWorkspaceConfirm: false,
+    notes: [],
     syncStatus: syncStatusEnum.Offline,
 
     setWorkspace: (newWorkspace) => {
@@ -34,8 +41,8 @@ export const useGeneral = create<Store>(
     setAllWorkspaces: (newWorkspaces) => {
       set(() => ({ allWorkspaces: newWorkspaces }))
     },
-    setShowLogoutWorkspaceConfirm: (confirm) => {
-      set(() => ({ showLogoutWorkspaceConfirm: confirm }))
+    setNotes: (notes) => {
+      set(() => ({ notes }))
     },
     setSyncStatus: (status) => {
       set(() => ({ syncStatus: status }))

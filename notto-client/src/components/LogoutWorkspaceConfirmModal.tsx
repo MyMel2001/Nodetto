@@ -1,10 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useGeneral } from "../store/general";
+import { useModals } from "../store/modals";
 import { trace } from "@tauri-apps/plugin-log";
 import { Workspace } from "./AccountMenu";
 
 export default function LogoutWorkspaceConfirmModal() {
-  const { showLogoutWorkspaceConfirm, setShowLogoutWorkspaceConfirm, setWorkspace, syncStatus, setAllWorkspaces } = useGeneral();
+  const { setWorkspace, syncStatus, setAllWorkspaces } = useGeneral();
+  const { showLogoutWorkspaceConfirm, setShowLogoutWorkspaceConfirm } = useModals();
 
   async function handleLogout() {
     // Clear workspace session

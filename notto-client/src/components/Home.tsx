@@ -1,16 +1,10 @@
 import { useEffect, useState } from "react";
-import { useGeneral } from "../store/general";
+import { useGeneral, Note } from "../store/general";
+import { useModals } from "../store/modals";
 import { invoke } from "@tauri-apps/api/core";
 import AccountMenu from "./AccountMenu";
 import { trace } from "@tauri-apps/plugin-log";
 import { listen } from "@tauri-apps/api/event";
-
-type Note = {
-  id: string;
-  title: string;
-  updated_at: Date;
-  deleted: boolean;
-};
 
 type NoteContent = {
   id: string;
@@ -21,8 +15,8 @@ type NoteContent = {
 };
 
 export default function Home() {
-  const { workspace } = useGeneral();
-  const [notes, setNotes] = useState<Note[] | null>(null);
+  const { workspace, notes, setNotes } = useGeneral();
+  const { setShowDeleteNoteConfirm } = useModals();
   const [currentNote, setCurrentNote] = useState<NoteContent | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -59,12 +53,18 @@ export default function Home() {
     get_notes_metadata();
   }, [workspace]);
 
+  // Clear currentNote if it was removed from the notes list (e.g. deleted via modal)
+  useEffect(() => {
+    if (currentNote && !notes.find((n) => n.id === currentNote.id)) {
+      setCurrentNote(null);
+    }
+  }, [notes]);
+
   function get_notes_metadata() {
     if (workspace) {
-
       trace("getting notes metadata from: " + workspace?.id + " - " + workspace?.workspace_name)
       invoke("get_all_notes_metadata", { id_workspace: workspace?.id })
-        .then((notes) => setNotes(notes as Note[]))
+        .then((fetched) => setNotes(fetched as Note[]))
         .catch((e) => console.error(e));
     }
   }
@@ -116,15 +116,9 @@ export default function Home() {
     get_notes_metadata();
   }
 
-  const filteredNotes = notes?.filter((note) => 
+  const filteredNotes = notes.filter((note) =>
     !note.deleted && note.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  async function delete_note(id: string) {
-    await invoke("delete_note", { id }).catch((e) => console.error(e));
-
-    get_notes_metadata();
-  }
 
   return (
     <div className="flex h-screen pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-slate-900">
@@ -218,7 +212,7 @@ export default function Home() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        delete_note(note.id);
+                        setShowDeleteNoteConfirm(true, note.id);
                       }}
                       className={`shrink-0 p-1 rounded transition-colors ${
                         isActive
