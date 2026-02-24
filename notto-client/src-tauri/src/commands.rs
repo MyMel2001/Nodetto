@@ -410,3 +410,29 @@ pub async fn delete_note(
 
     Ok(())
 }
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn restore_note(
+    state: State<'_, Mutex<AppState>>,
+    id: String,
+) -> Result<(), CommandError> {
+    let state = state.lock().await;
+    let conn = state.database.lock().await;
+
+    let mut note = db::operations::get_note(
+        &conn,
+        id,
+        state.workspace.clone().unwrap().master_encryption_key,
+    )
+    .unwrap();
+    note.deleted = false;
+
+    db::operations::update_note(
+        &conn,
+        note,
+        state.workspace.clone().unwrap().master_encryption_key,
+    )
+    .unwrap();
+
+    Ok(())
+}
