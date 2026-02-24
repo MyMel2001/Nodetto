@@ -1,11 +1,21 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useGeneral } from "../store/general";
+import { useGeneral, Note } from "../store/general";
 import { useModals } from "../store/modals";
 import { trace } from "@tauri-apps/plugin-log";
 
 export default function DeleteNoteConfirmModal() {
-  const { notes, setNotes } = useGeneral();
+  const { workspace, notes, setNotes } = useGeneral();
   const { showDeleteNoteConfirm, noteIdToDelete, setShowDeleteNoteConfirm } = useModals();
+
+  //TODO: this function is duplicated with Home
+  function get_notes_metadata() {
+    if (workspace) {
+      trace("getting notes metadata from: " + workspace?.id + " - " + workspace?.workspace_name)
+      invoke("get_all_notes_metadata", { id_workspace: workspace?.id })
+        .then((fetched) => setNotes(fetched as Note[]))
+        .catch((e) => console.error(e));
+    }
+  }
 
   async function handleDelete() {
     if (!noteIdToDelete) return;
@@ -15,6 +25,8 @@ export default function DeleteNoteConfirmModal() {
 
     setNotes(notes.filter((n) => n.id !== noteIdToDelete));
     setShowDeleteNoteConfirm(false);
+    
+    get_notes_metadata();
   }
 
   return (
