@@ -1,16 +1,12 @@
-use std::{thread, time::Duration};
-
-use chrono::{DateTime, Local, NaiveDateTime, Utc};
-use rusqlite::Connection;
+use chrono::{DateTime, Local, Utc};
 use serde::Serialize;
-use serde_json::error;
 use shared::{SelectNoteParams, SentNotes};
-use tokio::sync::{Mutex, MutexGuard};
+use tokio::{sync::Mutex, time::Duration};
 
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_log::log::{debug, error, trace, warn};
 
-use crate::{AppState, commands, db::{self, schema::Note}, sync};
+use crate::{AppState, commands, db::{self, schema::{Note, Workspace}}, sync};
 
 #[derive(Clone, Serialize)]
 pub enum SyncStatus {
@@ -24,18 +20,21 @@ pub enum SyncStatus {
 pub async fn run(handle: AppHandle) {
     let state = handle.state::<Mutex<AppState>>();
     let mut sync = DateTime::<Utc>::MIN_UTC.timestamp();
-    loop{
+    loop {
         'sync: {
-            let state = state.lock().await;
+            // Clone the workspace data we need, then release the lock BEFORE any network I/O.
+            // Holding the mutex during HTTP calls blocks all commands (create_note, get_note, etc.)
+            // which is especially harmful on mobile where the thread pool is limited.
+            let workspace = {
+                let state = state.lock().await;
+                state.workspace.clone()
+            };
 
-            if let Some(workspace) = state.workspace.clone() {
+            if let Some(workspace) = workspace {
                 if workspace.id.is_some() && workspace.token.is_some() && workspace.instance.is_some() {
-                    //Update sync infos
-                    
                     trace!("sync ts: {sync}");
-    
-                    //Sync
-                    match receive_latest_notes(&state, sync, &handle).await {
+
+                    match receive_latest_notes(&state, workspace.clone(), sync, &handle).await {
                         Ok(_) => {},
                         Err(e) => {
                             if let Some(e) = e.downcast_ref::<reqwest::Error>() {
@@ -43,13 +42,12 @@ pub async fn run(handle: AppHandle) {
                                     handle.emit("sync-status", SyncStatus::Offline).unwrap();
                                     warn!("Couldn't connect to server");
                                     break 'sync;
-                                }
-                                else{
+                                } else {
                                     handle.emit("sync-status", SyncStatus::Error(e.to_string())).unwrap();
                                     error!("{e}");
                                     break 'sync;
                                 }
-                            }else{
+                            } else {
                                 handle.emit("sync-status", SyncStatus::Error(e.to_string())).unwrap();
                                 error!("{e}");
                                 break 'sync;
@@ -57,7 +55,7 @@ pub async fn run(handle: AppHandle) {
                         }
                     };
 
-                    match send_latest_notes(&state, &handle).await {
+                    match send_latest_notes(&state, workspace, &handle).await {
                         Ok(_) => {},
                         Err(e) => {
                             if let Some(e) = e.downcast_ref::<reqwest::Error>() {
@@ -65,65 +63,68 @@ pub async fn run(handle: AppHandle) {
                                     handle.emit("sync-status", SyncStatus::Offline).unwrap();
                                     warn!("Couldn't connect to server");
                                     break 'sync;
-                                }
-                                else{
+                                } else {
                                     handle.emit("sync-status", SyncStatus::Error(e.to_string())).unwrap();
                                     error!("{e}");
                                     break 'sync;
                                 }
-                            }else{
+                            } else {
                                 handle.emit("sync-status", SyncStatus::Error(e.to_string())).unwrap();
                                 error!("{e}");
                                 break 'sync;
                             }
                         }
                     };
-    
+
                     handle.emit("sync-status", SyncStatus::Synched).unwrap();
-                    
+
                     sync = Local::now().to_utc().timestamp();
-                }else {
-                    // trace!("Conditions are not respected to sync {state:?}");
+                } else {
                     handle.emit("sync-status", SyncStatus::NotConnected).unwrap();
                     sync = DateTime::<Utc>::MIN_UTC.timestamp();
                 }
             }
         }
 
-        thread::sleep(Duration::from_secs(1));
+        // Use async sleep so the tokio runtime thread is NOT blocked between iterations.
+        // std::thread::sleep would stall the entire async runtime on mobile where the thread
+        // pool is limited, preventing events and commands from being processed.
+        tokio::time::sleep(Duration::from_secs(1)).await;
     }
 }
 
 
-pub async fn receive_latest_notes(state: &MutexGuard<'_, AppState>, last_sync: i64, handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let conn = state.database.lock().await;
-    
-    let workspace = state.workspace.clone().unwrap();
-
+pub async fn receive_latest_notes(
+    state: &Mutex<AppState>,
+    workspace: Workspace,
+    last_sync: i64,
+    handle: &AppHandle,
+) -> Result<(), Box<dyn std::error::Error>> {
     let params = SelectNoteParams {
-        username: workspace.username.unwrap(),
-        token: hex::encode(workspace.token.unwrap()), 
-        updated_at: last_sync
+        username: workspace.username.clone().unwrap(),
+        token: hex::encode(workspace.token.clone().unwrap()),
+        updated_at: last_sync,
     };
-    
-    //Ask server for modified notes
-    let notes = sync::operations::select_notes(params, workspace.instance.unwrap()).await?;
+
+    // HTTP request happens WITHOUT holding the AppState mutex
+    let notes = sync::operations::select_notes(params, workspace.instance.clone().unwrap()).await?;
 
     if !notes.is_empty() {
-        // Put new notes to database
+        // Re-acquire the lock only for DB writes
+        let state = state.lock().await;
+        let conn = state.database.lock().await;
+
         notes.into_iter().for_each(|note| {
             debug!("note received: {}, {}", note.title, note.updated_at);
 
             let mut note = db::schema::Note::from(note);
             note.id_workspace = workspace.id;
-            
-            //Check if exist
+
             let selected_note = db::schema::Note::select(&conn, note.uuid.clone()).unwrap();
-    
+
             match selected_note {
                 Some(sn) => {
                     if note.updated_at > sn.updated_at {
-                        //Note is more recent on server
                         match sn.synched {
                             true => note.update(&conn).unwrap(),
                             false => error!("Note {:?} is in conflict and it's not handled :(", sn.uuid) //TODO
@@ -132,12 +133,8 @@ pub async fn receive_latest_notes(state: &MutexGuard<'_, AppState>, last_sync: i
                 },
                 None => note.insert(&conn).unwrap()
             }
-    
-            //TODO: if deleted
         });
 
-        //Send event to frontend with new note metadata 
-        //TODO: what does future me think of this?
         let all_notes = db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap();
         let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(commands::NoteMetadata::from).collect();
 
@@ -147,48 +144,58 @@ pub async fn receive_latest_notes(state: &MutexGuard<'_, AppState>, last_sync: i
     Ok(())
 }
 
-pub async fn send_latest_notes(state: &MutexGuard<'_, AppState>, handle: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
-    let conn = state.database.lock().await;
+pub async fn send_latest_notes(
+    state: &Mutex<AppState>,
+    workspace: Workspace,
+    handle: &AppHandle,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // Collect unsynced notes while holding the lock, then release before HTTP
+    let (unsynced_notes, username, token, instance) = {
+        let state = state.lock().await;
+        let conn = state.database.lock().await;
 
-    let workspace = state.workspace.clone().unwrap();
-    
-    //Fetch db find all notes with synched = false;
-    let notes = Note::select_all(&conn, workspace.id.unwrap()).unwrap();
+        let all_notes = Note::select_all(&conn, workspace.id.unwrap()).unwrap();
+        let unsynced: Vec<Note> = all_notes.into_iter().filter(|n| !n.synched).collect();
 
-    //TODO: Optimise that with a database query
-    let notes: Vec<Note> = notes.into_iter().filter(|note| !note.synched).collect();
+        (
+            unsynced,
+            workspace.username.clone().unwrap(),
+            workspace.token.clone().unwrap(),
+            workspace.instance.clone().unwrap(),
+        )
+    };
 
-    if !notes.is_empty() {
+    if !unsynced_notes.is_empty() {
         debug!("sending modified notes...");
-        
+
         handle.emit("sync-status", SyncStatus::Syncing).unwrap();
 
         let sent_notes = SentNotes {
-            username: workspace.username.unwrap(),
-            notes: notes.into_iter().map(|n| n.into()).collect(),
-            token: workspace.token.unwrap()
+            username,
+            notes: unsynced_notes.into_iter().map(|n| n.into()).collect(),
+            token,
         };
 
-        //Send server these notes
-        let results = sync::operations::send_notes(sent_notes, workspace.instance.unwrap()).await?;
+        // HTTP request happens WITHOUT holding the AppState mutex
+        let results = sync::operations::send_notes(sent_notes, instance).await?;
 
-        //Handle Results
+        // Re-acquire lock only for DB writes
+        let state = state.lock().await;
+        let conn = state.database.lock().await;
+
         results.into_iter().for_each(|result| {
             match result.status {
                 shared::NoteStatus::Ok => {
                     let mut note = Note::select(&conn, result.uuid).unwrap().unwrap();
-
                     note.synched = true;
-
                     note.update(&conn).unwrap();
                 },
                 shared::NoteStatus::Conflict => {
-                    //TODO
-                    error!("Note {:?} is in conflict and it's not handled :(", result.uuid) 
+                    error!("Note {:?} is in conflict and it's not handled :(", result.uuid)
                 }
             }
         });
     }
-    
+
     Ok(())
 }
