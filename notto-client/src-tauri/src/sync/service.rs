@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local, Utc};
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use shared::{SelectNoteParams, SentNotes};
 use tokio::{sync::Mutex, time::Duration};
@@ -19,7 +19,12 @@ pub enum SyncStatus {
 
 pub async fn run(handle: AppHandle) {
     let state = handle.state::<Mutex<AppState>>();
-    let mut sync = DateTime::<Utc>::MIN_UTC.timestamp();
+    // last_seen tracks the highest updated_at we have received from the server.
+    // We use this instead of Local::now() to avoid clock skew:
+    // if the mobile clock is even 1s ahead of the computer's, notes written by
+    // the computer would have updated_at < mobile_now and never be fetched.
+    let mut last_seen: i64 = DateTime::<Utc>::MIN_UTC.timestamp();
+
     loop {
         'sync: {
             // Clone the workspace data we need, then release the lock BEFORE any network I/O.
@@ -32,10 +37,17 @@ pub async fn run(handle: AppHandle) {
 
             if let Some(workspace) = workspace {
                 if workspace.id.is_some() && workspace.token.is_some() && workspace.instance.is_some() {
-                    trace!("sync ts: {sync}");
+                    trace!("sync last_seen: {last_seen}");
 
-                    match receive_latest_notes(&state, workspace.clone(), sync, &handle).await {
-                        Ok(_) => {},
+                    match receive_latest_notes(&state, workspace.clone(), last_seen, &handle).await {
+                        Ok(max_ts) => {
+                            // Advance last_seen to the highest updated_at we received.
+                            // Using the server-side timestamps (set by the writing device) keeps
+                            // us in one clock domain and eliminates mobile/desktop clock drift.
+                            if let Some(ts) = max_ts {
+                                last_seen = ts;
+                            }
+                        },
                         Err(e) => {
                             if let Some(e) = e.downcast_ref::<reqwest::Error>() {
                                 if e.is_connect() {
@@ -77,11 +89,9 @@ pub async fn run(handle: AppHandle) {
                     };
 
                     handle.emit("sync-status", SyncStatus::Synched).unwrap();
-
-                    sync = Local::now().to_utc().timestamp();
                 } else {
                     handle.emit("sync-status", SyncStatus::NotConnected).unwrap();
-                    sync = DateTime::<Utc>::MIN_UTC.timestamp();
+                    last_seen = DateTime::<Utc>::MIN_UTC.timestamp();
                 }
             }
         }
@@ -94,54 +104,60 @@ pub async fn run(handle: AppHandle) {
 }
 
 
+/// Returns the max `updated_at` timestamp among received notes, or None if the server had nothing new.
+/// The caller uses this as the next sync baseline instead of Local::now() to avoid clock skew.
 pub async fn receive_latest_notes(
     state: &Mutex<AppState>,
     workspace: Workspace,
-    last_sync: i64,
+    last_seen: i64,
     handle: &AppHandle,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<Option<i64>, Box<dyn std::error::Error>> {
     let params = SelectNoteParams {
         username: workspace.username.clone().unwrap(),
         token: hex::encode(workspace.token.clone().unwrap()),
-        updated_at: last_sync,
+        updated_at: last_seen,
     };
 
     // HTTP request happens WITHOUT holding the AppState mutex
     let notes = sync::operations::select_notes(params, workspace.instance.clone().unwrap()).await?;
 
-    if !notes.is_empty() {
-        // Re-acquire the lock only for DB writes
-        let state = state.lock().await;
-        let conn = state.database.lock().await;
-
-        notes.into_iter().for_each(|note| {
-            debug!("note received: {}, {}", note.title, note.updated_at);
-
-            let mut note = db::schema::Note::from(note);
-            note.id_workspace = workspace.id;
-
-            let selected_note = db::schema::Note::select(&conn, note.uuid.clone()).unwrap();
-
-            match selected_note {
-                Some(sn) => {
-                    if note.updated_at > sn.updated_at {
-                        match sn.synched {
-                            true => note.update(&conn).unwrap(),
-                            false => error!("Note {:?} is in conflict and it's not handled :(", sn.uuid) //TODO
-                        };
-                    }
-                },
-                None => note.insert(&conn).unwrap()
-            }
-        });
-
-        let all_notes = db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap();
-        let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(commands::NoteMetadata::from).collect();
-
-        handle.emit("new_note_metadata", &notes_metadata).unwrap();
+    if notes.is_empty() {
+        return Ok(None);
     }
 
-    Ok(())
+    let max_updated_at = notes.iter().map(|n| n.updated_at).max();
+
+    // Re-acquire the lock only for DB writes
+    let state = state.lock().await;
+    let conn = state.database.lock().await;
+
+    notes.into_iter().for_each(|note| {
+        debug!("note received: {}, {}", note.title, note.updated_at);
+
+        let mut note = db::schema::Note::from(note);
+        note.id_workspace = workspace.id;
+
+        let selected_note = db::schema::Note::select(&conn, note.uuid.clone()).unwrap();
+
+        match selected_note {
+            Some(sn) => {
+                if note.updated_at > sn.updated_at {
+                    match sn.synched {
+                        true => note.update(&conn).unwrap(),
+                        false => error!("Note {:?} is in conflict and it's not handled :(", sn.uuid) //TODO
+                    };
+                }
+            },
+            None => note.insert(&conn).unwrap()
+        }
+    });
+
+    let all_notes = db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap();
+    let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(commands::NoteMetadata::from).collect();
+
+    handle.emit("new_note_metadata", &notes_metadata).unwrap();
+
+    Ok(max_updated_at)
 }
 
 pub async fn send_latest_notes(
