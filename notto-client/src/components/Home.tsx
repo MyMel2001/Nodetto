@@ -276,7 +276,7 @@ export default function Home() {
                           e.stopPropagation();
                           restore_note(note.id);
                         }}
-                        className="shrink-0 mr-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10"
+                        className="shrink-0 mr-2 p-1.5 rounded-md opacity-100 transition-all duration-150 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10"
                         title="Restore note"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -289,7 +289,7 @@ export default function Home() {
                           e.stopPropagation();
                           setShowDeleteNoteConfirm(true, note.id);
                         }}
-                        className={`shrink-0 mr-2 p-1.5 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-150 ${isActive
+                        className={`shrink-0 mr-2 p-1.5 rounded-md opacity-100 transition-all duration-150 ${isActive
                           ? "text-slate-400 hover:text-red-400 hover:bg-red-400/10"
                           : "text-slate-500 hover:text-red-400 hover:bg-red-400/10"
                           }`}
