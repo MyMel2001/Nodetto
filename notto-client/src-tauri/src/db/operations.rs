@@ -102,25 +102,30 @@ pub fn get_workspaces(conn: &Connection) -> Result<Vec<Workspace>, Box<dyn std::
     Ok(workspaces)
 }
 
+fn common_insert_or_update(conn: &Connection, key: String, value: String) -> Result<(), Box<dyn std::error::Error>> {
+    match Common::select(&conn, key.clone())? {
+        Some(mut common) => {
+            common.value = value;
+
+            common.update(conn)?;
+        },
+        None => {
+            let common = Common {
+                key,
+                value
+            };
+
+            common.insert(conn)?;
+        }
+    }
+
+    Ok(())
+}
+
 pub fn set_logged_workspace(conn: &Connection, workspace: Option<Workspace>) {
     match workspace {
         Some(workspace) => {
-            match Common::select(conn, "logged".to_string()).unwrap() {
-                Some(mut common) => {
-                        common.value = workspace.workspace_name;
-        
-                        common.update(conn).unwrap();
-                    },
-        
-                None => {
-                    let common = Common {
-                        key: "logged".to_string(),
-                        value: workspace.workspace_name,
-                    };
-                    
-                    common.insert(conn).unwrap();
-                },
-            }
+            common_insert_or_update(conn, "logged".to_string(), workspace.workspace_name).unwrap()
         },
         None => {
             Common::delete(conn, "logged".to_string());
