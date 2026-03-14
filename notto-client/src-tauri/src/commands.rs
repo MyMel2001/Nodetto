@@ -60,7 +60,7 @@ impl From<Note> for NoteMetadata {
 
 /// Response type for get_note command.
 /// Converts updated_at from Unix seconds (DB) to milliseconds (JS/TS) at the boundary.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Clone)]
 pub struct NoteResponse {
     pub id: String,
     pub title: String,

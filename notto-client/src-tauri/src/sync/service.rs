@@ -4,9 +4,9 @@ use shared::{SelectNoteParams, SentNotes};
 use tokio::{sync::Mutex, time::Duration};
 
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_log::log::{debug, error, warn};
+use tauri_plugin_log::log::{debug, error, info, warn};
 
-use crate::{AppState, commands, db::{self, schema::{Note, Workspace}}, sync};
+use crate::{AppState, commands, crypt, db::{self, schema::{Note, Workspace}}, sync};
 
 #[derive(Clone, Serialize)]
 pub enum SyncStatus {
@@ -125,8 +125,11 @@ pub async fn receive_latest_notes(
                     match sn.synched {
                         true => note.update(&conn).unwrap(),
                         false => {
-                            info!("Note {:?} is in conflict (client side)", );
-                            handle.emit("conflict", note).unwrap();
+                            info!("Note {:?} is in conflict (client side)", note.uuid);
+                            let decrypted_note: commands::NoteResponse = crypt::decrypt_note(note, workspace.master_encryption_key).unwrap().into();
+
+                            handle.emit("conflict", decrypted_note).unwrap();
+                            handle.emit("sync-status", SyncStatus::Error("Conflict".to_string())).unwrap();
                         }
                     };
                 }
@@ -181,8 +184,10 @@ pub async fn send_latest_notes(
                     note.update(&conn).unwrap();
                 },
                 shared::NoteStatus::Conflict(conflicted_note) => {
-                    info!("Note {:?} is in conflict (server side)", conflicted_note.id);
-                    handle.emit("conflict", conflicted_note).unwrap();
+                    info!("Note {:?} is in conflict (server side)", conflicted_note.uuid);
+                    let decrypted_note: commands::NoteResponse = crypt::decrypt_note(conflicted_note.into(), workspace.master_encryption_key).unwrap().into();
+
+                    handle.emit("conflict", decrypted_note).unwrap();
                 }
             }
         });

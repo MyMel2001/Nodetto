@@ -18,7 +18,7 @@ pub struct User {
     pub salt_server_recovery: String,
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Note {
     pub uuid: String,
     pub title: String,
