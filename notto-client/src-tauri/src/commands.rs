@@ -518,7 +518,7 @@ pub async fn handle_conflict(
             //Get server note and replace local one.
             let params = SelectNoteParams {
                 username: workspace.username.clone().unwrap(),
-                token: workspace.token.clone().unwrap(),
+                token: hex::encode(workspace.token.clone().unwrap()),
                 note_id: id,
             };
 
