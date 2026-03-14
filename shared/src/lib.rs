@@ -40,6 +40,7 @@ pub struct SentNotes {
     pub notes: Vec<Note>,
     pub token: Vec<u8>,
     pub username: String,
+    pub force: bool
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]

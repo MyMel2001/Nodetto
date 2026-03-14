@@ -169,6 +169,7 @@ pub async fn send_latest_notes(
             username: workspace.username.unwrap(),
             notes: unsynced_notes.into_iter().map(|n| n.into()).collect(),
             token: workspace.token.unwrap(),
+            force: false
         };
 
         let results = sync::operations::send_notes(sent_notes, workspace.instance.unwrap()).await?;

@@ -74,7 +74,7 @@ async fn send_note(
 
         match note.select(&mut conn).await {
             Some(selected_note) => {
-                if selected_note.updated_at > note.updated_at {
+                if selected_note.updated_at > note.updated_at && !sent_notes.force {
                     result.push(SentNotesResult {
                         uuid: note.uuid.clone(),
                         status: shared::NoteStatus::Conflict(selected_note.into()),
