@@ -1,22 +1,15 @@
 import { create } from "zustand"
-
-export type ConflictNote = {
-  id: string
-  title: string
-  content: string
-  updated_at: number
-  deleted: boolean
-}
+import { NoteContent } from "../components/Home"
 
 type ModalsStore = {
   showLogoutWorkspaceConfirm: boolean
   showDeleteNoteConfirm: boolean
   noteIdToDelete: string | null
-  conflictNote: ConflictNote | null
+  conflictNote: NoteContent | null
 
   setShowLogoutWorkspaceConfirm: (show: boolean) => void
   setShowDeleteNoteConfirm: (show: boolean, noteId?: string) => void
-  setConflictNote: (note: ConflictNote | null) => void
+  setConflictNote: (note: NoteContent | null) => void
 }
 
 export const useModals = create<ModalsStore>((set) => ({

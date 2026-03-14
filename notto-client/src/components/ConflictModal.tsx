@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useModals, ConflictNote } from "../store/modals";
-
-type LocalNote = {
-  id: string;
-  title: string;
-  content: string;
-  updated_at: Date;
-  deleted: boolean;
-};
+import { useModals } from "../store/modals";
+import { NoteContent } from "./Home";
 
 type DiffLine = {
   text: string;
@@ -37,18 +30,18 @@ function computeDiff(local: string, server: string): { local: DiffLine[]; server
 
 export default function ConflictModal() {
   const { conflictNote, setConflictNote } = useModals();
-  const [localNote, setLocalNote] = useState<LocalNote | null>(null);
+  const [localNote, setLocalNote] = useState<NoteContent | null>(null);
   const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     let unlisten: (() => void) | undefined;
 
-    listen<ConflictNote>("conflict", (event) => {
+    listen<NoteContent>("conflict", (event) => {
       const serverNote = event.payload;
       setConflictNote(serverNote);
 
       invoke("get_note", { id: serverNote.id })
-        .then((note) => setLocalNote(note as LocalNote))
+        .then((note) => setLocalNote(note as NoteContent))
         .catch((e) => console.error(e));
     }).then((fn) => { unlisten = fn; });
 
