@@ -1,9 +1,10 @@
+use chrono::Local;
 use shared::{SelectNoteParams, SelectNotesParams, SentNotes};
 use tauri::State;
 use tokio::sync::Mutex;
 
 use serde::Serialize;
-use tauri_plugin_log::log::{debug, trace};
+use tauri_plugin_log::log::{debug, error, trace};
 use uuid::Uuid;
 
 use crate::crypt::NoteData;
@@ -490,10 +491,12 @@ pub async fn handle_conflict(
     match local {
         true => {
             //Send to server with force
-            let note = {
+            let mut note = {
                 let conn = state.database.lock().await;
                 Note::select(&conn, id).unwrap().unwrap()
             };
+
+            note.updated_at = Local::now().to_utc().timestamp();
 
             let sent_notes = SentNotes {
                 username: workspace.username.unwrap(),
@@ -507,7 +510,7 @@ pub async fn handle_conflict(
                 match result.status {
                     shared::NoteStatus::Ok => {},
                     shared::NoteStatus::Conflict(conflicted_note) => {
-                        panic!("Conflict in conflict handling, this shouldn't happen lol: {:?}", conflicted_note)
+                        error!("Conflict in conflict handling, this shouldn't happen lol: {:?}", conflicted_note)
                     }
                 }
             });
