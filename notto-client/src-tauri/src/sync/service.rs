@@ -6,7 +6,7 @@ use tokio::{sync::Mutex, time::Duration};
 use tauri::{AppHandle, Emitter, Manager};
 use tauri_plugin_log::log::{debug, error, info, warn};
 
-use crate::{AppState, commands, crypt, db::{self, schema::{Note, Workspace}}, sync};
+use crate::{AppState, commands, crypt::{self, NoteData}, db::{self, schema::{Note, Workspace}}, sync};
 
 #[derive(Clone, Serialize)]
 pub enum SyncStatus {
@@ -114,7 +114,7 @@ pub async fn receive_latest_notes(
     let conn = state.database.lock().await;
 
     notes.into_iter().for_each(|note| {
-        debug!("note received: {}, {}", note.title, note.updated_at);
+        debug!("note received: {}, {}", note.uuid, note.updated_at);
 
         let mut note = db::schema::Note::from(note);
         note.id_workspace = workspace.id;
@@ -126,7 +126,20 @@ pub async fn receive_latest_notes(
                         true => note.update(&conn).unwrap(),
                         false => {
                             info!("Note {:?} is in conflict (client side)", note.uuid);
-                            let decrypted_note: commands::NoteResponse = crypt::decrypt_note(note, workspace.master_encryption_key).unwrap().into();
+                            
+                            let content_plaintext = crypt::decrypt_data(&note.content, &note.nonce, &workspace.master_encryption_key).unwrap();
+                            let metadata_plaintext = crypt::decrypt_data(&note.metadata, &note.metadata_nonce, &workspace.master_encryption_key).unwrap();
+                            let metadata: crypt::NoteMetadata = serde_json::from_slice(&metadata_plaintext).unwrap();
+
+                            let note_data = NoteData {
+                                id: note.uuid.clone(),
+                                title: metadata.title,
+                                content: String::from_utf8(content_plaintext).unwrap(),
+                                updated_at: note.updated_at,
+                                deleted: note.deleted,
+                            };
+
+                            let decrypted_note: commands::NoteResponse = note_data.into();
 
                             handle.emit("conflict", decrypted_note).unwrap();
                             handle.emit("sync-status", SyncStatus::Error("Conflict".to_string())).unwrap();
@@ -139,7 +152,7 @@ pub async fn receive_latest_notes(
     });
 
     let all_notes = db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap();
-    let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(commands::NoteMetadata::from).collect();
+    let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(|n| commands::NoteMetadata::from_note(n, &workspace.master_encryption_key)).collect();
 
     handle.emit("new_note_metadata", &notes_metadata).unwrap();
 
@@ -186,7 +199,22 @@ pub async fn send_latest_notes(
                 },
                 shared::NoteStatus::Conflict(conflicted_note) => {
                     info!("Note {:?} is in conflict (server side)", conflicted_note.uuid);
-                    let decrypted_note: commands::NoteResponse = crypt::decrypt_note(conflicted_note.into(), workspace.master_encryption_key).unwrap().into();
+
+                    let note = db::schema::Note::from(conflicted_note);
+
+                    let content_plaintext = crypt::decrypt_data(&note.content, &note.nonce, &workspace.master_encryption_key).unwrap();
+                    let metadata_plaintext = crypt::decrypt_data(&note.metadata, &note.metadata_nonce, &workspace.master_encryption_key).unwrap();
+                    let metadata: crypt::NoteMetadata = serde_json::from_slice(&metadata_plaintext).unwrap();
+
+                    let note_data = NoteData {
+                        id: note.uuid,
+                        title: metadata.title,
+                        content: String::from_utf8(content_plaintext).unwrap(),
+                        updated_at: note.updated_at,
+                        deleted: note.deleted,
+                    };
+
+                    let decrypted_note: commands::NoteResponse = note_data.into();
 
                     handle.emit("conflict", decrypted_note).unwrap();
                 }

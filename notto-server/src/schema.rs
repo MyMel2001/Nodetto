@@ -8,9 +8,10 @@ use serde::{Deserialize, Serialize};
 pub struct Note {
     pub uuid: String,
     pub id_user: Option<u32>, //Server id user
-    pub title: String,
     pub content: Vec<u8>,
     pub nonce: Vec<u8>,
+    pub metadata: Vec<u8>,
+    pub metadata_nonce: Vec<u8>,
     pub updated_at: i64,
     pub deleted: bool,
 }
@@ -20,11 +21,12 @@ impl FromRow for Note {
         Ok(Note {
             uuid: row.get(0).ok_or(FromRowError(row.clone()))?,
             id_user: row.get(1).ok_or(FromRowError(row.clone()))?,
-            title: row.get(2).ok_or(FromRowError(row.clone()))?,
-            content: row.get(3).ok_or(FromRowError(row.clone()))?,
-            nonce: row.get(4).ok_or(FromRowError(row.clone()))?,
-            updated_at: row.get(5).ok_or(FromRowError(row.clone()))?,
-            deleted: row.get(6).ok_or(FromRowError(row.clone()))?,
+            content: row.get(2).ok_or(FromRowError(row.clone()))?,
+            nonce: row.get(3).ok_or(FromRowError(row.clone()))?,
+            metadata: row.get(4).ok_or(FromRowError(row.clone()))?,
+            metadata_nonce: row.get(5).ok_or(FromRowError(row.clone()))?,
+            updated_at: row.get(6).ok_or(FromRowError(row.clone()))?,
+            deleted: row.get(7).ok_or(FromRowError(row.clone()))?,
         })
     }
 }
@@ -34,9 +36,10 @@ impl From<shared::Note> for Note {
         Note {
             uuid: note.uuid,
             id_user: None,
-            title: note.title,
             content: note.content,
             nonce: note.nonce,
+            metadata: note.metadata,
+            metadata_nonce: note.metadata_nonce,
             updated_at: note.updated_at,
             deleted: note.deleted,
         }
@@ -49,7 +52,8 @@ impl Into<shared::Note> for Note {
             uuid: self.uuid,
             content: self.content,
             nonce: self.nonce,
-            title: self.title,
+            metadata: self.metadata,
+            metadata_nonce: self.metadata_nonce,
             updated_at: self.updated_at,
             deleted: self.deleted,
         }
@@ -74,14 +78,15 @@ impl Note {
 
     pub async fn insert(&self, conn: &mut Conn) {
         conn.exec_drop(
-            "INSERT INTO note (uuid, id_user, title, content, nonce, updated_at, deleted) 
-            VALUES (:uuid, :id_user, :title, :content, :nonce, :updated_at, :deleted)",
+            "INSERT INTO note (uuid, id_user, content, nonce, metadata, metadata_nonce, updated_at, deleted) 
+            VALUES (:uuid, :id_user, :content, :nonce, :metadata, :metadata_nonce, :updated_at, :deleted)",
             params!(
                 "uuid" => &self.uuid,
                 "id_user" => &self.id_user,
-                "title" => &self.title,
                 "content" => &self.content,
                 "nonce" => &self.nonce,
+                "metadata" => &self.metadata,
+                "metadata_nonce" => &self.metadata_nonce,
                 "updated_at" => &self.updated_at,
                 "deleted" => &self.deleted,
             ),
@@ -93,12 +98,13 @@ impl Note {
     pub async fn update(&self, conn: &mut Conn) {
         conn.exec_drop(
             "UPDATE note 
-            SET title = :title, content = :content, nonce = :nonce, updated_at = :updated_at, deleted = :deleted
+            SET content = :content, nonce = :nonce, metadata = :metadata, metadata_nonce = :metadata_nonce, updated_at = :updated_at, deleted = :deleted
             WHERE uuid = :uuid",
             params!(
-                "title" => &self.title,
                 "content" => &self.content,
                 "nonce" => &self.nonce,
+                "metadata" => &self.metadata,
+                "metadata_nonce" => &self.metadata_nonce,
                 "updated_at" => &self.updated_at,
                 "deleted" => &self.deleted,
                 "uuid" => &self.uuid,

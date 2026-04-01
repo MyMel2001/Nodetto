@@ -11,9 +11,10 @@ use rusqlite::Error::QueryReturnedNoRows;
 pub struct Note {
     pub uuid: String,
     pub id_workspace: Option<u32>,
-    pub title: String,
     pub content: Vec<u8>, //Serialized encrypted content.
     pub nonce: Vec<u8>, //Nonce used to decrypt data.
+    pub metadata: Vec<u8>,
+    pub metadata_nonce: Vec<u8>,
     pub updated_at: i64,
     pub synched: bool, //true: note has already been sent with server
     pub deleted: bool,
@@ -24,9 +25,10 @@ impl From<shared::Note> for Note {
         Note {
             uuid: note.uuid,
             id_workspace: None,
-            title: note.title,
             content: note.content,
             nonce: note.nonce,
+            metadata: note.metadata,
+            metadata_nonce: note.metadata_nonce,
             updated_at: note.updated_at,
             synched: true,
             deleted: note.deleted
@@ -38,9 +40,10 @@ impl Into<shared::Note> for Note {
     fn into(self) -> shared::Note {
         shared::Note {
             uuid: self.uuid,
-            title: self.title,
             content: self.content,
             nonce: self.nonce,
+            metadata: self.metadata,
+            metadata_nonce: self.metadata_nonce,
             updated_at: self.updated_at,
             deleted: self.deleted
         }
@@ -53,9 +56,10 @@ impl Note {
         "CREATE TABLE IF NOT EXISTS note (
                 uuid BLOB PRIMARY KEY,
                 id_workspace INTEGER NOT NULL REFERENCES workspace(id),
-                title TEXT,
                 content BLOB,
                 nonce BLOB,
+                metadata BLOB,
+                metadata_nonce BLOB,
                 updated_at INTEGER,
                 synched INTEGER NOT NULL,
                 deleted INTEGER NOT NULL
@@ -74,12 +78,13 @@ impl Note {
                 Ok(Note{
                     uuid: row.get(0)?,
                     id_workspace: row.get(1)?,
-                    title: row.get(2)?,
-                    content: row.get(3)?,
-                    nonce: row.get(4)?,
-                    updated_at: row.get(5)?,
-                    synched: row.get(6)?,
-                    deleted: row.get(7)?,
+                    content: row.get(2)?,
+                    nonce: row.get(3)?,
+                    metadata: row.get(4)?,
+                    metadata_nonce: row.get(5)?,
+                    updated_at: row.get(6)?,
+                    synched: row.get(7)?,
+                    deleted: row.get(8)?,
                 })
             }
         ) {
@@ -92,16 +97,16 @@ impl Note {
 
     pub fn insert(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
         conn.execute(
-            "INSERT INTO note (uuid, title, content, nonce, id_workspace, updated_at, synched, deleted) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)", 
-            (&self.uuid, &self.title, &self.content, &self.nonce, &self.id_workspace, &self.updated_at, &self.synched, &self.deleted)
+            "INSERT INTO note (uuid, content, nonce, metadata, metadata_nonce, id_workspace, updated_at, synched, deleted) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", 
+            (&self.uuid, &self.content, &self.nonce, &self.metadata, &self.metadata_nonce, &self.id_workspace, &self.updated_at, &self.synched, &self.deleted)
         ).unwrap();
 
         Ok(())
     }
 
     pub fn update(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-        conn.execute("UPDATE note SET title = ?, content = ?, nonce = ?, updated_at = ?, synched = ?, deleted = ? WHERE uuid = ?",
-            (&self.title, &self.content, &self.nonce, &self.updated_at, &self.synched, &self.deleted, &self.uuid))?;
+        conn.execute("UPDATE note SET content = ?, nonce = ?, metadata = ?, metadata_nonce = ?, updated_at = ?, synched = ?, deleted = ? WHERE uuid = ?",
+            (&self.content, &self.nonce, &self.metadata, &self.metadata_nonce, &self.updated_at, &self.synched, &self.deleted, &self.uuid))?;
 
         Ok(())
     }
@@ -115,12 +120,13 @@ impl Note {
                 Ok(Note{
                     uuid: row.get(0)?,
                     id_workspace: row.get(1)?,
-                    title: row.get(2)?,
-                    content: row.get(3)?,
-                    nonce: row.get(4)?,
-                    updated_at: row.get(5)?,
-                    synched: row.get(6)?,
-                    deleted: row.get(7)?,
+                    content: row.get(2)?,
+                    nonce: row.get(3)?,
+                    metadata: row.get(4)?,
+                    metadata_nonce: row.get(5)?,
+                    updated_at: row.get(6)?,
+                    synched: row.get(7)?,
+                    deleted: row.get(8)?,
                 })
             }
         ).unwrap();
