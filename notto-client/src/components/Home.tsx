@@ -9,6 +9,9 @@ import { listen } from "@tauri-apps/api/event";
 export type NoteContent = {
   id: string;
   title: string;
+  parent_id: string | null;
+  is_folder: boolean;
+  folder_open: boolean;
   content: string;
   updated_at: Date;
   deleted: boolean;
@@ -92,12 +95,30 @@ export default function Home() {
     }
   }
 
-  async function create_note() {
-    await invoke("create_note", { title: "New Note" })
+  async function create_note(parent_id: string | null = null) {
+    await invoke("create_note", { title: "New Note", parent_id })
       .then((uuid) => get_note(uuid as string))
       .catch((e) => console.error(e));
 
     get_notes_metadata();
+  }
+
+  async function create_folder(parent_id: string | null = null) {
+    await invoke("create_folder", { title: "New Folder", parent_id })
+      .then(() => get_notes_metadata())
+      .catch((e) => console.error(e));
+  }
+
+  async function toggle_folder(note: Note) {
+    invoke("get_note", { id: note.id })
+      .then((fullNote: any) => {
+        const noteToUpdate: NoteContent = {
+          ...fullNote,
+          folder_open: !note.folder_open
+        };
+        invoke("edit_note", { note: noteToUpdate }).then(() => get_notes_metadata());
+      })
+      .catch((e) => console.error(e));
   }
 
   async function get_note(id: string) {
@@ -112,11 +133,8 @@ export default function Home() {
 
   async function edit_note(content: string) {
     const note: NoteContent = {
-      id: currentNote?.id!,
-      title: currentNote?.title!,
-      updated_at: currentNote?.updated_at!,
+      ...currentNote!,
       content: content,
-      deleted: currentNote?.deleted!,
     };
 
     setCurrentNote(note);
@@ -132,11 +150,8 @@ export default function Home() {
 
   async function edit_note_title(title: string) {
     const note: NoteContent = {
-      id: currentNote?.id!,
+      ...currentNote!,
       title: title!,
-      updated_at: currentNote?.updated_at!,
-      content: currentNote?.content!,
-      deleted: currentNote?.deleted!,
     };
 
     setCurrentNote(note);
@@ -150,6 +165,162 @@ export default function Home() {
     note.deleted === showDeleted &&
     note.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const buildTree = (nodes: Note[], parentId: string | null = null): Note[] => {
+    return nodes
+      .filter((node) => node.parent_id === parentId)
+      .sort((a, b) => {
+        if (a.is_folder && !b.is_folder) return -1;
+        if (!a.is_folder && b.is_folder) return 1;
+        return a.title.localeCompare(b.title);
+      });
+  };
+
+  const getPath = (nodeId: string | null): Note[] => {
+    if (!nodeId) return [];
+    const node = notes.find(n => n.id === nodeId);
+    if (!node || !node.parent_id) return node ? [node] : [];
+    return [...getPath(node.parent_id), node];
+  };
+
+  const NoteTreeItem = ({ note, level = 0 }: { note: Note; level: number }) => {
+    const isActive = currentNote?.id === note.id;
+    const children = buildTree(filteredNotes, note.id);
+    const hasChildren = children.length > 0;
+
+    return (
+      <div className="flex flex-col">
+        <div
+          className={`group relative min-h-10 w-full rounded-lg text-left transition-all duration-150 flex items-center ${isActive
+            ? "bg-slate-700 shadow-md"
+            : "bg-slate-700/25 hover:bg-slate-700/50"
+            }`}
+          style={{ paddingLeft: `${level * 12}px` }}
+        >
+          {/* Active accent bar */}
+          <div
+            className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full transition-all duration-200 ${isActive
+              ? showDeleted ? "h-5 bg-red-400" : "h-5 bg-blue-400"
+              : "h-0 bg-transparent"
+              }`}
+          />
+
+          <div className="flex items-center flex-1 min-w-0 px-2 py-1.5">
+            {note.is_folder ? (
+              <button
+                onClick={() => toggle_folder(note)}
+                className="p-1 hover:bg-slate-600 rounded transition-colors mr-1"
+              >
+                <svg
+                  className={`w-4 h-4 text-slate-400 transition-transform ${note.folder_open ? "rotate-90" : ""}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ) : (
+              <div className="w-6" />
+            )}
+
+            <button
+              onClick={() => get_note(note.id)}
+              className="flex-1 text-left min-w-0 flex items-center gap-2"
+            >
+              {note.is_folder ? (
+                <svg className="w-4 h-4 text-blue-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              )}
+              <div
+                className={`text-sm font-medium truncate transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"
+                  } ${showDeleted ? "line-through text-slate-400" : ""}`}
+              >
+                {note.title}
+              </div>
+            </button>
+          </div>
+
+          {!showDeleted && (
+            <div className="flex items-center mr-1">
+              {note.is_folder && (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      create_note(note.id);
+                    }}
+                    className="p-1 rounded-md text-slate-500 hover:text-white hover:bg-slate-600 transition-all"
+                    title="New note in folder"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      create_folder(note.id);
+                    }}
+                    className="p-1 rounded-md text-slate-500 hover:text-white hover:bg-slate-600 transition-all"
+                    title="New folder in folder"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                  </button>
+                </>
+              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (note.is_folder) {
+                    // TODO: Custom folder delete modal with warning
+                    setShowDeleteNoteConfirm(true, note.id);
+                  } else {
+                    setShowDeleteNoteConfirm(true, note.id);
+                  }
+                }}
+                className={`p-1.5 rounded-md transition-all duration-150 text-slate-500 hover:text-red-400 hover:bg-red-400/10`}
+                title="Delete"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {showDeleted && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                restore_note(note.id);
+              }}
+              className="shrink-0 mr-2 p-1.5 rounded-md text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10"
+              title="Restore"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+            </button>
+          )}
+        </div>
+        {note.is_folder && note.folder_open && hasChildren && (
+          <div className="flex flex-col">
+            {children.map((child) => (
+              <NoteTreeItem key={child.id} note={child} level={level + 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const deletedCount = notes.filter((n) => n.deleted).length;
 
@@ -174,27 +345,48 @@ export default function Home() {
         <div className="p-3 md:p-4 border-b border-slate-700">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xl font-bold text-white">Notto</h2>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               {!showDeleted && (
-                <button
-                  onClick={create_note}
-                  className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
-                  title="New Note"
-                >
-                  <svg
-                    className="w-5 h-5 text-white"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                <>
+                  <button
+                    onClick={() => create_note(null)}
+                    className="p-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+                    title="New Note"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
-                </button>
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => create_folder(null)}
+                    className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors"
+                    title="New Folder"
+                  >
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                      />
+                    </svg>
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -249,75 +441,18 @@ export default function Home() {
         {/* Notes List */}
         <div className="flex-1 overflow-y-auto">
           {filteredNotes && filteredNotes.length > 0 ? (
-            <div className="px-2 py-1 divide-y space-y-1 divide-slate-700/60">
-              {filteredNotes.map((note) => {
-                const isActive = currentNote?.id === note.id;
-                return (
-                  <div
-                    key={note.id}
-                    className={`group relative min-h-10 w-full rounded-lg text-left transition-all duration-150 flex items-center ${isActive
-                      ? "bg-slate-700 shadow-md"
-                      : "bg-slate-700/25 hover:bg-slate-700/50"
-                      }`}
-                  >
-                    {/* Active accent bar */}
-                    <div
-                      className={`absolute left-0 top-1/2 -translate-y-1/2 w-0.5 rounded-full transition-all duration-200 ${isActive
-                        ? showDeleted ? "h-5 bg-red-400" : "h-5 bg-blue-400"
-                        : "h-0 bg-transparent"
-                        }`}
-                    />
-
-                    <button
-                      onClick={() => get_note(note.id)}
-                      className="flex-1 text-left min-w-0 px-4 py-2.5"
-                    >
-                      <div
-                        className={`text-sm font-medium truncate transition-colors ${isActive ? "text-white" : "text-slate-300 group-hover:text-white"
-                          } ${showDeleted ? "line-through text-slate-400" : ""}`}
-                      >
-                        {note.title}
-                      </div>
-                    </button>
-
-                    {showDeleted ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          restore_note(note.id);
-                        }}
-                        className="shrink-0 mr-2 p-1.5 rounded-md opacity-100 transition-all duration-150 text-slate-500 hover:text-emerald-400 hover:bg-emerald-400/10"
-                        title="Restore note"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                        </svg>
-                      </button>
-                    ) : (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowDeleteNoteConfirm(true, note.id);
-                        }}
-                        className={`shrink-0 mr-2 p-1.5 rounded-md opacity-100 transition-all duration-150 ${isActive
-                          ? "text-slate-400 hover:text-red-400 hover:bg-red-400/10"
-                          : "text-slate-500 hover:text-red-400 hover:bg-red-400/10"
-                          }`}
-                        title="Delete note"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
+            <div className="px-2 py-1 space-y-1">
+              {showDeleted ? (
+                <div className="divide-y divide-slate-700/60">
+                  {filteredNotes.map((note) => (
+                    <NoteTreeItem key={note.id} note={note} level={0} />
+                  ))}
+                </div>
+              ) : (
+                buildTree(filteredNotes, null).map((note) => (
+                  <NoteTreeItem key={note.id} note={note} level={0} />
+                ))
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-center h-full text-slate-500 text-sm p-4 text-center">
@@ -338,74 +473,138 @@ export default function Home() {
       <div className="flex-1 flex flex-col bg-slate-900">
         {currentNote ? (
           <>
-            {/* Note Title with mobile menu button */}
-            <div className="border-b border-slate-700 p-3 md:p-4 flex items-center gap-3 overflow-hidden">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden shrink-0 p-2 text-slate-400 hover:text-white transition-colors"
-                title="Menu"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-              <input
-                type="text"
-                onChange={(e) => edit_note_title(e.target.value)}
-                value={currentNote.title}
-                disabled={currentNote.deleted}
-                className="flex-1 w-0 min-w-0 text-xl md:text-2xl font-bold bg-transparent text-white border-none focus:outline-none placeholder-slate-600 disabled:opacity-60 disabled:cursor-not-allowed truncate"
-                placeholder="Note title..."
-              />
-              <div className="ml-auto shrink-0 flex items-center gap-2">
-                {currentNote.deleted ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-red-400/80 bg-red-400/10 border border-red-400/20 px-2 py-1 rounded-md">
-                      Deleted
-                    </span>
-                    <button
-                      onClick={() => restore_note(currentNote.id)}
-                      className="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 hover:bg-emerald-400/20 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
-                      title="Restore note"
+            {/* Note Title and Breadcrumbs */}
+            <div className="border-b border-slate-700 p-3 md:p-4 flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-xs text-slate-500 overflow-hidden whitespace-nowrap">
+                <button 
+                  onClick={() => {
+                    const updatedNote = { ...currentNote, parent_id: null };
+                    setCurrentNote(updatedNote);
+                    invoke("edit_note", { note: updatedNote }).then(() => get_notes_metadata());
+                  }}
+                  className="hover:text-blue-400 transition-colors"
+                >
+                  Root
+                </button>
+                {getPath(currentNote.parent_id).map((folder) => (
+                  <div key={folder.id} className="flex items-center gap-2">
+                    <span>/</span>
+                    <button 
+                      onClick={() => {
+                        const updatedNote = { ...currentNote, parent_id: folder.id };
+                        setCurrentNote(updatedNote);
+                        invoke("edit_note", { note: updatedNote }).then(() => get_notes_metadata());
+                      }}
+                      className="hover:text-blue-400 transition-colors truncate max-w-[100px]"
                     >
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                      </svg>
-                      <span className="hidden sm:inline">Restore</span>
+                      {folder.title}
                     </button>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => setShowDeleteNoteConfirm(true, currentNote.id)}
-                    className="text-xs text-red-400/80 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
-                    title="Delete note"
-                  >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    <span className="hidden sm:inline">Delete</span>
-                  </button>
+                ))}
+                {currentNote.is_folder && (
+                  <>
+                    <span>/</span>
+                    <span className="text-slate-300 font-medium truncate">{currentNote.title}</span>
+                  </>
                 )}
-                <span className="text-xs text-slate-500 text-center leading-tight">
-                  <span className="sm:hidden">
-                    <span className="block">{new Date(currentNote.updated_at).toLocaleDateString()}</span>
-                    <span className="block">{new Date(currentNote.updated_at).toLocaleTimeString()}</span>
+                
+                <div className="ml-auto flex items-center gap-2">
+                  <select 
+                    value={currentNote.parent_id || ""} 
+                    onChange={(e) => {
+                      const newParentId = e.target.value === "" ? null : e.target.value;
+                      const updatedNote = { ...currentNote, parent_id: newParentId };
+                      setCurrentNote(updatedNote);
+                      invoke("edit_note", { note: updatedNote }).then(() => get_notes_metadata());
+                    }}
+                    className="bg-slate-800 border border-slate-700 rounded px-1 py-0.5 text-[10px] text-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  >
+                    <option value="">Move to Root</option>
+                    {notes.filter(n => n.is_folder && n.id !== currentNote.id).map(f => (
+                      <option key={f.id} value={f.id}>Move to: {f.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 overflow-hidden">
+                <button
+                  onClick={() => setSidebarOpen(true)}
+                  className="lg:hidden shrink-0 p-2 text-slate-400 hover:text-white transition-colors"
+                  title="Menu"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
+                <input
+                  type="text"
+                  onChange={(e) => edit_note_title(e.target.value)}
+                  value={currentNote.title}
+                  disabled={currentNote.deleted}
+                  className="flex-1 w-0 min-w-0 text-xl md:text-2xl font-bold bg-transparent text-white border-none focus:outline-none placeholder-slate-600 disabled:opacity-60 disabled:cursor-not-allowed truncate"
+                  placeholder={currentNote.is_folder ? "Folder title..." : "Note title..."}
+                />
+                <div className="ml-auto shrink-0 flex items-center gap-2">
+                  {currentNote.deleted ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-400/80 bg-red-400/10 border border-red-400/20 px-2 py-1 rounded-md">
+                        Deleted
+                      </span>
+                      <button
+                        onClick={() => restore_note(currentNote.id)}
+                        className="text-xs text-emerald-400 bg-emerald-400/10 border border-emerald-400/20 hover:bg-emerald-400/20 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                        title="Restore note"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                        <span className="hidden sm:inline">Restore</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => setShowDeleteNoteConfirm(true, currentNote.id)}
+                      className="text-xs text-red-400/80 bg-red-400/10 border border-red-400/20 hover:bg-red-400/20 px-2 py-1 rounded-md transition-colors flex items-center gap-1"
+                      title="Delete note"
+                    >
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  )}
+                  <span className="text-xs text-slate-500 text-center leading-tight">
+                    <span className="sm:hidden">
+                      <span className="block">{new Date(currentNote.updated_at).toLocaleDateString()}</span>
+                      <span className="block">{new Date(currentNote.updated_at).toLocaleTimeString()}</span>
+                    </span>
+                    <span className="hidden sm:inline whitespace-nowrap">
+                      {new Date(currentNote.updated_at).toLocaleString()}
+                    </span>
                   </span>
-                  <span className="hidden sm:inline whitespace-nowrap">
-                    {new Date(currentNote.updated_at).toLocaleString()}
-                  </span>
-                </span>
+                </div>
               </div>
             </div>
             {/* Note Content */}
             <div className="flex-1 p-3 md:p-4 overflow-y-auto overflow-x-hidden">
-              <textarea
-                onChange={(e) => edit_note(e.target.value)}
-                value={currentNote.content}
-                disabled={currentNote.deleted}
-                className="w-full h-full bg-transparent text-white resize-none border-none focus:outline-none placeholder-slate-600 text-sm md:text-base leading-relaxed disabled:opacity-60 disabled:cursor-not-allowed"
-                placeholder="Start writing..."
-              />
+              {!currentNote.is_folder ? (
+                <textarea
+                  onChange={(e) => edit_note(e.target.value)}
+                  value={currentNote.content}
+                  disabled={currentNote.deleted}
+                  className="w-full h-full bg-transparent text-white resize-none border-none focus:outline-none placeholder-slate-600 text-sm md:text-base leading-relaxed disabled:opacity-60 disabled:cursor-not-allowed"
+                  placeholder="Start writing..."
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
+                  <svg className="w-20 h-20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <p className="text-lg font-medium">This is a folder</p>
+                  <p className="text-sm">Use the sidebar to add notes or subfolders here.</p>
+                </div>
+              )}
             </div>
           </>
         ) : (
