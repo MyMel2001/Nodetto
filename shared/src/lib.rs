@@ -21,9 +21,10 @@ pub struct User {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Note {
     pub uuid: String,
-    pub title: String,
     pub content: Vec<u8>,
     pub nonce: Vec<u8>,
+    pub metadata: Vec<u8>,
+    pub metadata_nonce: Vec<u8>,
     pub updated_at: i64,
     pub deleted: bool
 }

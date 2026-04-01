@@ -12,13 +12,17 @@ use crate::{crypt::{self, NoteData}, db::schema::{Common, Note, Workspace}};
 //TODO: refactor this, data encryption and stuff should not be inside db?
 pub fn create_note(conn: &Connection, id_workspace: u32, title: String, mek: Key<Aes256Gcm>) -> Result<String, Box<dyn std::error::Error>> {
     let (content, nonce) = crypt::encrypt_note("".to_string(), mek).unwrap(); //Content empty because it's first note
+    
+    let metadata_ser = serde_json::to_vec(&crypt::NoteMetadata { title }).unwrap();
+    let (metadata, metadata_nonce) = crypt::encrypt_data(&metadata_ser, &mek).unwrap();
 
     let note = Note {
         uuid: Uuid::new_v7(uuid::Timestamp::now(NoContext)).to_string(),
         id_workspace: Some(id_workspace),
         content,
         nonce,
-        title,
+        metadata,
+        metadata_nonce,
         updated_at: Local::now().to_utc().timestamp(),
         synched: false,
         deleted: false,
@@ -46,12 +50,16 @@ pub fn get_notes(conn: &Connection, id_workspace: u32) -> Result<Vec<Note>, Box<
 
 pub fn update_note(conn: &Connection, note_data: NoteData, mek: Key<Aes256Gcm>) -> Result<(), Box<dyn std::error::Error>> {
     let (content, nonce) = crypt::encrypt_note(note_data.content, mek).unwrap();
+
+    let metadata_ser = serde_json::to_vec(&crypt::NoteMetadata { title: note_data.title }).unwrap();
+    let (metadata, metadata_nonce) = crypt::encrypt_data(&metadata_ser, &mek).unwrap();
     
     let mut note = Note::select(conn, note_data.id).unwrap().unwrap();
 
-    note.title = note_data.title;
     note.content = content;
     note.nonce = nonce;
+    note.metadata = metadata;
+    note.metadata_nonce = metadata_nonce;
     note.updated_at = Local::now().to_utc().timestamp();
     note.synched = false;
     note.deleted = note_data.deleted;

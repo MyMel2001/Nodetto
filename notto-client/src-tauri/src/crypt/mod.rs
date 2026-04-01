@@ -22,6 +22,11 @@ pub struct NoteData {
     pub deleted: bool
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NoteMetadata {
+    pub title: String,
+}
+
 #[derive(Debug)]
 pub struct AccountEncryptionData {
     pub recovery_key_auth: String,
@@ -194,30 +199,44 @@ pub fn decrypt_mek(password: String, encrypted_mek_password: Vec<u8>, salt_data:
     mek.to_owned()
 }
 
+pub fn encrypt_data(
+    data: &[u8],
+    key: &Key<Aes256Gcm>,
+) -> Result<(Vec<u8>, Vec<u8>), Box<dyn std::error::Error>> {
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let cipher = Aes256Gcm::new(key);
+    let ciphertext = cipher.encrypt(&nonce, data).map_err(|e| e.to_string())?;
+    Ok((ciphertext, nonce.to_vec()))
+}
+
+pub fn decrypt_data(
+    ciphertext: &[u8],
+    nonce: &[u8],
+    key: &Key<Aes256Gcm>,
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let nonce = Nonce::from_slice(nonce);
+    let cipher = Aes256Gcm::new(key);
+    let plaintext = cipher.decrypt(nonce, ciphertext).map_err(|e| e.to_string())?;
+    Ok(plaintext)
+}
+
 pub fn encrypt_note(
     content: String,
     master_encryption_key: Key<Aes256Gcm>,
 ) -> Result<(Vec<u8>, Vec<u8>), Box<dyn std::error::Error>> {
-    //Encrypt
-    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
-
-    let cipher = Aes256Gcm::new(&master_encryption_key);
-
-    let ciphertext = cipher.encrypt(&nonce, content.as_bytes()).unwrap();
-
-    Ok((ciphertext, nonce.to_vec()))
+    encrypt_data(content.as_bytes(), &master_encryption_key)
 }
 
 pub fn decrypt_note(note: schema::Note, mek: Key<Aes256Gcm>) -> Result<NoteData, Box<dyn std::error::Error>> {
-    let nonce_array: [u8; 12] = note.nonce.try_into().expect("nonce must be 12 bytes");
-    let nonce = Nonce::from(nonce_array);
+    let content_plaintext = decrypt_data(&note.content, &note.nonce, &mek)?;
+    let metadata_plaintext = decrypt_data(&note.metadata, &note.metadata_nonce, &mek)?;
+    
+    let metadata: NoteMetadata = serde_json::from_slice(&metadata_plaintext)?;
 
-    let cipher = Aes256Gcm::new(&mek);
-    let plaintext = cipher.decrypt(&nonce, note.content.as_ref()).unwrap();
     let data_unser = NoteData {
         id: note.uuid,
-        title: note.title,
-        content: String::from_utf8(plaintext).unwrap(),
+        title: metadata.title,
+        content: String::from_utf8(content_plaintext).unwrap(),
         updated_at: note.updated_at,
         deleted: note.deleted,
     };

@@ -49,12 +49,15 @@ pub struct NoteMetadata {
     pub deleted: bool
 }
 
-impl From<Note> for NoteMetadata {
-    fn from(note: Note) -> Self {
+impl NoteMetadata {
+    pub fn from_note(note: Note, key: &aes_gcm::Key<aes_gcm::Aes256Gcm>) -> Self {
+        let metadata_plaintext = crypt::decrypt_data(&note.metadata, &note.metadata_nonce, key).unwrap();
+        let metadata: crypt::NoteMetadata = serde_json::from_slice(&metadata_plaintext).unwrap();
+
         NoteMetadata {
             id: note.uuid,
-            title: note.title,
-            updated_at: note.updated_at * 1000, // Unix seconds → ms for JS/TS
+            title: metadata.title,
+            updated_at: note.updated_at * 1000,
             deleted: note.deleted
         }
     }
@@ -168,9 +171,11 @@ pub async fn get_all_notes_metadata(
 
     let conn = state.database.lock().await;
 
+    let workspace = state.workspace.clone().unwrap();
+
     let notes = db::operations::get_notes(&conn, id_workspace).unwrap();
 
-    let notes_metadata = notes.into_iter().map(NoteMetadata::from).collect();
+    let notes_metadata = notes.into_iter().map(|n| NoteMetadata::from_note(n, &workspace.master_encryption_key)).collect();
 
     Ok(notes_metadata)
 }
@@ -540,7 +545,7 @@ pub async fn handle_conflict(
                 note.update(&conn).unwrap();
                 
                 let all_notes = db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap();
-                let notes_metadata: Vec<NoteMetadata> = all_notes.into_iter().map(NoteMetadata::from).collect();
+                let notes_metadata: Vec<NoteMetadata> = all_notes.into_iter().map(|n| NoteMetadata::from_note(n, &workspace.master_encryption_key)).collect();
                 
                 handle.emit("new_note_metadata", &notes_metadata).unwrap();
             }

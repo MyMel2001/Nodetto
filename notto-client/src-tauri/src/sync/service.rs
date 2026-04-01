@@ -114,7 +114,7 @@ pub async fn receive_latest_notes(
     let conn = state.database.lock().await;
 
     notes.into_iter().for_each(|note| {
-        debug!("note received: {}, {}", note.title, note.updated_at);
+        debug!("note received: {}, {}", note.uuid, note.updated_at);
 
         let mut note = db::schema::Note::from(note);
         note.id_workspace = workspace.id;
@@ -139,7 +139,7 @@ pub async fn receive_latest_notes(
     });
 
     let all_notes = db::operations::get_notes(&conn, workspace.id.unwrap()).unwrap();
-    let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(commands::NoteMetadata::from).collect();
+    let notes_metadata: Vec<commands::NoteMetadata> = all_notes.into_iter().map(|n| commands::NoteMetadata::from_note(n, &workspace.master_encryption_key)).collect();
 
     handle.emit("new_note_metadata", &notes_metadata).unwrap();
 
