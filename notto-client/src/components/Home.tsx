@@ -36,6 +36,7 @@ type TreeCallbacks = {
   onCreateFolder: (parentId: string | null) => void;
   onDelete: (id: string) => void;
   onRestore: (id: string) => void;
+  onCloseSidebar: () => void;
 };
 
 type NoteTreeItemProps = {
@@ -115,8 +116,28 @@ function NoteTreeItem({
     droppable.setNodeRef(el);
   };
 
+  function handleMainClick() {
+    if (note.is_folder) {
+      callbacks.onToggleFolder(note);
+    } else {
+      callbacks.onSelectNote(note.id);
+      callbacks.onCloseSidebar();
+    }
+  }
+
   return (
-    <div className="flex flex-col" style={{ opacity: draggable.isDragging ? 0.4 : 1 }}>
+    <div
+      className="flex flex-col"
+      style={{
+        marginLeft: !isSearchResult && level > 0 ? `${level * 12}px` : undefined,
+        opacity: draggable.isDragging ? 0.4 : 1,
+      }}
+    >
+      {/* Vertical connector line for nested items */}
+      {!isSearchResult && level > 0 && (
+        <div className="absolute left-0 top-0 bottom-0 w-px bg-slate-700 -ml-3 pointer-events-none" />
+      )}
+
       <div
         ref={setRef}
         className={`group relative min-h-10 w-full rounded-lg text-left transition-all duration-150 flex items-center ${
@@ -126,7 +147,7 @@ function NoteTreeItem({
             ? "bg-blue-500/20 ring-1 ring-blue-400/40"
             : "bg-slate-700/25 hover:bg-slate-700/50"
         }`}
-        style={{ paddingLeft: isSearchResult ? "8px" : `${level * 12 + 8}px` }}
+        style={{ paddingLeft: "8px" }}
         {...(!showDeleted && !isSearchResult ? draggable.attributes : {})}
         {...(!showDeleted && !isSearchResult ? draggable.listeners : {})}
       >
@@ -144,11 +165,8 @@ function NoteTreeItem({
         <div className="flex items-center flex-1 min-w-0 py-1.5">
           {!isSearchResult && note.is_folder ? (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                callbacks.onToggleFolder(note);
-              }}
-              className="p-1 hover:bg-slate-600 rounded transition-colors mr-1"
+              onClick={(e) => { e.stopPropagation(); callbacks.onToggleFolder(note); }}
+              className="p-1 hover:bg-slate-600 rounded transition-colors mr-1 shrink-0"
             >
               <svg
                 className={`w-3.5 h-3.5 text-slate-400 transition-transform ${note.folder_open ? "rotate-90" : ""}`}
@@ -160,11 +178,11 @@ function NoteTreeItem({
               </svg>
             </button>
           ) : !isSearchResult ? (
-            <div className="w-5" />
+            <div className="w-5 shrink-0" />
           ) : null}
 
           <button
-            onClick={() => callbacks.onSelectNote(note.id)}
+            onClick={handleMainClick}
             className="flex-1 text-left min-w-0 flex items-center gap-2 pr-2"
           >
             {note.is_folder ? (
@@ -236,7 +254,7 @@ function NoteTreeItem({
       </div>
 
       {!isSearchResult && note.is_folder && note.folder_open && hasChildren && (
-        <div className="flex flex-col">
+        <div className="relative flex flex-col pl-3 border-l border-slate-700 ml-3 mt-0.5">
           {children.map((child) => (
             <NoteTreeItem
               key={child.id}
@@ -365,7 +383,6 @@ export default function Home() {
         trace("note received: " + (note as NoteContent).id);
       })
       .catch((e) => console.error(e));
-    setSidebarOpen(false);
   }
 
   async function edit_note(content: string) {
@@ -440,6 +457,7 @@ export default function Home() {
     onCreateFolder: create_folder,
     onDelete: (id) => setShowDeleteNoteConfirm(true, id),
     onRestore: restore_note,
+    onCloseSidebar: () => setSidebarOpen(false),
   };
 
   const dragActiveNote = dragActiveId ? notes.find((n) => n.id === dragActiveId) ?? null : null;
