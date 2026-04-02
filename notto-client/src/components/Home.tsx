@@ -178,7 +178,7 @@ function NoteTreeItem({
               </svg>
             </button>
           ) : !isSearchResult ? (
-            <div className="w-5 shrink-0" />
+            <div className="w-1 shrink-0" />
           ) : null}
 
           <button
@@ -254,7 +254,7 @@ function NoteTreeItem({
       </div>
 
       {!isSearchResult && note.is_folder && note.folder_open && hasChildren && (
-        <div className="relative flex flex-col pl-3 border-l border-slate-700 ml-3 mt-0.5">
+        <div className="flex flex-col border-l border-slate-700 mt-1">
           {children.map((child) => (
             <NoteTreeItem
               key={child.id}
@@ -447,7 +447,7 @@ export default function Home() {
   const filteredNotes = notes.filter(
     (note) =>
       note.deleted === showDeleted &&
-      (searchQuery === "" || note.title.toLowerCase().includes(searchQuery.toLowerCase()))
+      (searchQuery === "" || (note.title.toLowerCase().includes(searchQuery.toLowerCase()) && !note.is_folder))
   );
 
   const callbacks: TreeCallbacks = {
