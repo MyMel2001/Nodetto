@@ -121,12 +121,8 @@ function NoteTreeItem({
   };
 
   function handleMainClick() {
-    if (note.is_folder) {
-      callbacks.onSelectNote(note.id);
-    } else {
-      callbacks.onSelectNote(note.id);
-      callbacks.onCloseSidebar();
-    }
+    callbacks.onSelectNote(note.id);
+    callbacks.onCloseSidebar();
   }
 
   return (
