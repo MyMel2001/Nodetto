@@ -214,7 +214,7 @@ export default function NoteEditor({ noteId, content, onChange, disabled }: Prop
       {/* Editor content */}
       <EditorContent
         editor={editor}
-        className="note-editor flex-1 overflow-y-auto px-6 py-5"
+        className="note-editor flex-1 overflow-y-auto overflow-x-hidden min-w-0 px-6 py-5"
       />
     </div>
   );
