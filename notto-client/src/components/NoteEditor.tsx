@@ -48,6 +48,7 @@ export default function NoteEditor({ noteId, content, onChange, disabled }: Prop
   const editor = useEditor({
     extensions: [StarterKit, Markdown],
     content,
+    contentType: "markdown",
     editable: !disabled,
     onUpdate: ({ editor }) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -60,7 +61,7 @@ export default function NoteEditor({ noteId, content, onChange, disabled }: Prop
   // Reset content when switching to a different note
   useEffect(() => {
     if (!editor || editor.isDestroyed) return;
-    editor.commands.setContent(content, { emitUpdate: false });
+    editor.commands.setContent(content, { emitUpdate: false, contentType: "markdown" });
   }, [noteId]);
 
   // Sync disabled state
