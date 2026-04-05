@@ -1,10 +1,9 @@
-use chrono::{DateTime, Utc};
 use serde::Serialize;
 use shared::{SelectNotesParams, SentNotes};
 use tokio::{sync::Mutex, time::Duration};
 
 use tauri::{AppHandle, Emitter, Manager};
-use tauri_plugin_log::log::{debug, error, info, warn};
+use tauri_plugin_log::log::{debug, error, info, trace, warn};
 
 use crate::{AppState, commands, crypt::{self, NoteData}, db::{self, schema::{Note, Workspace}}, sync};
 
@@ -19,9 +18,6 @@ pub enum SyncStatus {
 
 pub async fn run(handle: AppHandle) {
     let state = handle.state::<Mutex<AppState>>();
-    // Track highest updated_at received from the server rather than Local::now(),
-    // to avoid clock skew between devices causing notes to be missed.
-    let mut last_seen: i64 = DateTime::<Utc>::MIN_UTC.timestamp();
 
     loop {
         'sync: {
@@ -32,10 +28,13 @@ pub async fn run(handle: AppHandle) {
 
             if let Some(workspace) = workspace {
                 if workspace.id.is_some() && workspace.token.is_some() && workspace.instance.is_some() {
-                    match receive_latest_notes(&state, workspace.clone(), last_seen, &handle).await {
+                    // On first iteration (or after logout), init from the persisted value.
+                    let current_last_seen = workspace.last_sync_at;
+
+                    match receive_latest_notes(&state, workspace.clone(), current_last_seen, &handle).await {
                         Ok(max_ts) => {
                             if let Some(ts) = max_ts {
-                                last_seen = ts;
+                                update_last_sync(&state, workspace.clone(), ts).await.unwrap();
                             }
                         },
                         Err(e) => {
@@ -57,8 +56,12 @@ pub async fn run(handle: AppHandle) {
                         }
                     };
 
-                    match send_latest_notes(&state, workspace, &handle).await {
-                        Ok(_) => {},
+                    match send_latest_notes(&state, workspace.clone(), &handle).await {
+                        Ok(max_ts) => {
+                            if let Some(ts) = max_ts {
+                                update_last_sync(&state, workspace.clone(), ts).await.unwrap();
+                            }
+                        },
                         Err(e) => {
                             if let Some(e) = e.downcast_ref::<reqwest::Error>() {
                                 if e.is_connect() {
@@ -81,7 +84,6 @@ pub async fn run(handle: AppHandle) {
                     handle.emit("sync-status", SyncStatus::Synched).unwrap();
                 } else {
                     handle.emit("sync-status", SyncStatus::NotConnected).unwrap();
-                    last_seen = DateTime::<Utc>::MIN_UTC.timestamp();
                 }
             }
         }
@@ -95,7 +97,7 @@ pub async fn receive_latest_notes(
     workspace: Workspace,
     last_seen: i64,
     handle: &AppHandle,
-) -> Result<Option<i64>, Box<dyn std::error::Error>> {
+) -> Result<Option<i64>, Box<dyn std::error::Error + Send + Sync>> {
     let params = SelectNotesParams {
         username: workspace.username.clone().unwrap(),
         token: hex::encode(workspace.token.clone().unwrap()),
@@ -166,7 +168,7 @@ pub async fn send_latest_notes(
     state: &Mutex<AppState>,
     workspace: Workspace,
     handle: &AppHandle,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<Option<i64>, Box<dyn std::error::Error + Send + Sync>> {
     let unsynced_notes: Vec<Note> = {
         let state = state.lock().await;
         let conn = state.database.lock().await;
@@ -175,6 +177,8 @@ pub async fn send_latest_notes(
         Note::select_all(&conn, workspace.id.unwrap()).unwrap()
             .into_iter().filter(|n| !n.synched).collect()
     };
+
+    let max_updated_at = unsynced_notes.iter().map(|n| n.updated_at).max();
 
     if !unsynced_notes.is_empty() {
         debug!("sending modified notes...");
@@ -227,6 +231,19 @@ pub async fn send_latest_notes(
             }
         });
     }
+
+    Ok(max_updated_at)
+}
+
+pub async fn update_last_sync(state: &Mutex<AppState>, mut updated_workspace: Workspace, timestamp: i64) 
+        -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let mut state = state.lock().await;
+    
+    updated_workspace.last_sync_at = timestamp+1;
+    state.workspace = Some(updated_workspace.clone());
+    
+    let conn = state.database.lock().await;
+    updated_workspace.update(&conn)?;
 
     Ok(())
 }

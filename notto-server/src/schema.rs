@@ -1,3 +1,4 @@
+use chrono::Local;
 use mysql_async::{
     Conn, FromRowError, Row, params,
     prelude::{FromRow, Queryable},
@@ -86,7 +87,7 @@ impl Note {
                 "nonce" => &self.nonce,
                 "metadata" => &self.metadata,
                 "metadata_nonce" => &self.metadata_nonce,
-                "updated_at" => &self.updated_at,
+                "updated_at" => Local::now().to_utc().timestamp(),
                 "deleted" => &self.deleted,
             ),
         )
@@ -104,7 +105,7 @@ impl Note {
                 "nonce" => &self.nonce,
                 "metadata" => &self.metadata,
                 "metadata_nonce" => &self.metadata_nonce,
-                "updated_at" => &self.updated_at,
+                "updated_at" => Local::now().to_utc().timestamp(),
                 "deleted" => &self.deleted,
                 "uuid" => &self.uuid,
             ),

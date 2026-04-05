@@ -131,6 +131,7 @@ pub fn create_workspace(
         encrypted_mek_recovery: workspace_encryption_data.encrypted_mek_recovery,
         token: None,
         instance: None,
+        last_sync_at: chrono::DateTime::<chrono::Utc>::MIN_UTC.timestamp(),
     };
 
     workspace.insert(&conn).unwrap();

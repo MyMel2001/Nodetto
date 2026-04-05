@@ -1,7 +1,7 @@
 use shared::{LoginRequestParams, Note, SelectNoteParams, SelectNotesParams, SentNotes, User};
 use tauri_plugin_log::log::{trace, debug};
 
-pub async fn send_notes(notes: SentNotes, instance: String) -> Result<Vec<shared::SentNotesResult>, Box<dyn std::error::Error>> {
+pub async fn send_notes(notes: SentNotes, instance: String) -> Result<Vec<shared::SentNotesResult>, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::new();
 
     let response = client.post(instance + "/notes").json(&notes).send().await?.error_for_status()?;
@@ -9,7 +9,7 @@ pub async fn send_notes(notes: SentNotes, instance: String) -> Result<Vec<shared
     return Ok(response.json().await.unwrap())
 }
 
-pub async fn select_notes(params: SelectNotesParams, instance: String) -> Result<Vec<Note>, Box<dyn std::error::Error>> {
+pub async fn select_notes(params: SelectNotesParams, instance: String) -> Result<Vec<Note>, Box<dyn std::error::Error + Send + Sync>> {
     let client = reqwest::Client::new();
 
     let response = client.get(instance + "/notes").query(&params).send().await?.error_for_status()?;

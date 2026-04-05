@@ -158,7 +158,8 @@ pub struct Workspace {
     pub mek_recovery_nonce: Vec<u8>,
     pub encrypted_mek_recovery: Vec<u8>,
     pub token: Option<Vec<u8>>,
-    pub instance: Option<String>
+    pub instance: Option<String>,
+    pub last_sync_at: i64,
 }
 
 impl Workspace {
@@ -173,9 +174,10 @@ impl Workspace {
                 mek_recovery_nonce BLOB,
                 encrypted_mek_recovery BLOB,
                 token TEXT,
-                instance TEXT
+                instance TEXT,
+                last_sync_at INTEGER NOT NULL DEFAULT -9223372036854775808
             )", 
-            (), // empty list of parameters.
+            (),
         ).unwrap();
 
         Ok(())
@@ -183,8 +185,8 @@ impl Workspace {
 
     pub fn insert(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
         conn.execute(
-            "INSERT INTO workspace (id, workspace_name, username, master_encryption_key, salt_recovery_data, mek_recovery_nonce, encrypted_mek_recovery, token, instance) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)", 
-            (&self.id, &self.workspace_name, &self.username, &self.master_encryption_key.to_vec(), &self.salt_recovery_data, &self.mek_recovery_nonce, &self.encrypted_mek_recovery, &self.token, &self.instance)
+            "INSERT INTO workspace (id, workspace_name, username, master_encryption_key, salt_recovery_data, mek_recovery_nonce, encrypted_mek_recovery, token, instance, last_sync_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)", 
+            (&self.id, &self.workspace_name, &self.username, &self.master_encryption_key.to_vec(), &self.salt_recovery_data, &self.mek_recovery_nonce, &self.encrypted_mek_recovery, &self.token, &self.instance, &self.last_sync_at)
         ).unwrap();
 
         Ok(())
@@ -208,7 +210,8 @@ impl Workspace {
                     mek_recovery_nonce: row.get(5)?,
                     encrypted_mek_recovery: row.get(6)?,
                     token: row.get(7)?,
-                    instance: row.get(8)?
+                    instance: row.get(8)?,
+                    last_sync_at: row.get(9)?
                 })
             }
         ) {
@@ -239,7 +242,8 @@ impl Workspace {
                     mek_recovery_nonce: row.get(5)?,
                     encrypted_mek_recovery: row.get(6)?,
                     token: row.get(7)?,
-                    instance: row.get(8)?
+                    instance: row.get(8)?,
+                    last_sync_at: row.get(9)?
                 })
             }
         ).unwrap();
@@ -253,9 +257,9 @@ impl Workspace {
         Ok(workspaces)
     }
     
-    pub fn update(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error>> {
-        conn.execute("UPDATE workspace SET workspace_name = ?, username = ?, master_encryption_key = ?, salt_recovery_data = ?, mek_recovery_nonce = ?, encrypted_mek_recovery = ?, token = ?, instance = ? WHERE id = ?",
-        (&self.workspace_name, &self.username, &self.master_encryption_key.to_vec(), &self.salt_recovery_data, &self.mek_recovery_nonce, &self.encrypted_mek_recovery, &self.token, &self.instance, &self.id))?;
+    pub fn update(&self, conn: &Connection) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+        conn.execute("UPDATE workspace SET workspace_name = ?, username = ?, master_encryption_key = ?, salt_recovery_data = ?, mek_recovery_nonce = ?, encrypted_mek_recovery = ?, token = ?, instance = ?, last_sync_at = ? WHERE id = ?",
+        (&self.workspace_name, &self.username, &self.master_encryption_key.to_vec(), &self.salt_recovery_data, &self.mek_recovery_nonce, &self.encrypted_mek_recovery, &self.token, &self.instance, &self.last_sync_at, &self.id))?;
         
         Ok(())
     }
