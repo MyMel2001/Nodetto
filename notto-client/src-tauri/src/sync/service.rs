@@ -1,4 +1,3 @@
-use chrono::{DateTime, Utc};
 use serde::Serialize;
 use shared::{SelectNotesParams, SentNotes};
 use tokio::{sync::Mutex, time::Duration};
@@ -19,9 +18,9 @@ pub enum SyncStatus {
 
 pub async fn run(handle: AppHandle) {
     let state = handle.state::<Mutex<AppState>>();
-    // Track highest updated_at received from the server rather than Local::now(),
-    // to avoid clock skew between devices causing notes to be missed.
-    let mut last_seen: i64 = DateTime::<Utc>::MIN_UTC.timestamp();
+    // Track highest updated_at received from the server, persisted across restarts
+    // via workspace.last_sync_at to avoid re-fetching all notes on every startup.
+    let mut last_seen: Option<i64> = None;
 
     loop {
         'sync: {
@@ -32,10 +31,22 @@ pub async fn run(handle: AppHandle) {
 
             if let Some(workspace) = workspace {
                 if workspace.id.is_some() && workspace.token.is_some() && workspace.instance.is_some() {
-                    match receive_latest_notes(&state, workspace.clone(), last_seen, &handle).await {
+                    // On first iteration (or after logout), init from the persisted value.
+                    let current_last_seen = last_seen.unwrap_or(workspace.last_sync_at);
+
+                    match receive_latest_notes(&state, workspace.clone(), current_last_seen, &handle).await {
                         Ok(max_ts) => {
                             if let Some(ts) = max_ts {
-                                last_seen = ts;
+                                last_seen = Some(ts);
+
+                                // Persist so the next startup skips already-seen notes.
+                                let state = state.lock().await;
+                                let conn = state.database.lock().await;
+                                let mut updated_workspace = workspace.clone();
+                                updated_workspace.last_sync_at = ts;
+                                updated_workspace.update(&conn).unwrap();
+                            } else {
+                                last_seen = Some(current_last_seen);
                             }
                         },
                         Err(e) => {
@@ -81,7 +92,7 @@ pub async fn run(handle: AppHandle) {
                     handle.emit("sync-status", SyncStatus::Synched).unwrap();
                 } else {
                     handle.emit("sync-status", SyncStatus::NotConnected).unwrap();
-                    last_seen = DateTime::<Utc>::MIN_UTC.timestamp();
+                    last_seen = None;
                 }
             }
         }
