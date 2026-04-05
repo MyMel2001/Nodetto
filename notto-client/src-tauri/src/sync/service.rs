@@ -18,9 +18,6 @@ pub enum SyncStatus {
 
 pub async fn run(handle: AppHandle) {
     let state = handle.state::<Mutex<AppState>>();
-    // Track highest updated_at received from the server, persisted across restarts
-    // via workspace.last_sync_at to avoid re-fetching all notes on every startup.
-    let mut last_seen: Option<i64> = None;
 
     loop {
         'sync: {
@@ -32,21 +29,17 @@ pub async fn run(handle: AppHandle) {
             if let Some(workspace) = workspace {
                 if workspace.id.is_some() && workspace.token.is_some() && workspace.instance.is_some() {
                     // On first iteration (or after logout), init from the persisted value.
-                    let current_last_seen = last_seen.unwrap_or(workspace.last_sync_at);
+                    let current_last_seen = workspace.last_sync_at;
 
                     match receive_latest_notes(&state, workspace.clone(), current_last_seen, &handle).await {
                         Ok(max_ts) => {
                             if let Some(ts) = max_ts {
-                                last_seen = Some(ts);
-
                                 // Persist so the next startup skips already-seen notes.
                                 let state = state.lock().await;
                                 let conn = state.database.lock().await;
                                 let mut updated_workspace = workspace.clone();
                                 updated_workspace.last_sync_at = ts;
                                 updated_workspace.update(&conn).unwrap();
-                            } else {
-                                last_seen = Some(current_last_seen);
                             }
                         },
                         Err(e) => {
@@ -92,7 +85,6 @@ pub async fn run(handle: AppHandle) {
                     handle.emit("sync-status", SyncStatus::Synched).unwrap();
                 } else {
                     handle.emit("sync-status", SyncStatus::NotConnected).unwrap();
-                    last_seen = None;
                 }
             }
         }
@@ -106,7 +98,7 @@ pub async fn receive_latest_notes(
     workspace: Workspace,
     last_seen: i64,
     handle: &AppHandle,
-) -> Result<Option<i64>, Box<dyn std::error::Error>> {
+) -> Result<Option<i64>, Box<dyn std::error::Error + Send + Sync>> {
     let params = SelectNotesParams {
         username: workspace.username.clone().unwrap(),
         token: hex::encode(workspace.token.clone().unwrap()),
@@ -177,7 +169,7 @@ pub async fn send_latest_notes(
     state: &Mutex<AppState>,
     workspace: Workspace,
     handle: &AppHandle,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let unsynced_notes: Vec<Note> = {
         let state = state.lock().await;
         let conn = state.database.lock().await;
