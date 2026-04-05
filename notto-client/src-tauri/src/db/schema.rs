@@ -180,12 +180,6 @@ impl Workspace {
             (),
         ).unwrap();
 
-        // Migration: add last_sync_at to existing databases that don't have it yet
-        let _ = conn.execute(
-            "ALTER TABLE workspace ADD COLUMN last_sync_at INTEGER NOT NULL DEFAULT -9223372036854775808",
-            (),
-        );
-
         Ok(())
     }
 
