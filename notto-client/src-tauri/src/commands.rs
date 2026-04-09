@@ -61,7 +61,7 @@ impl From<anyhow::Error> for CommandError {
             ErrorKind::Internal
         };
 
-        error!("Error: {}", format!("{:#}", err) );
+        error!("{:?}: {}",kind, format!("{:#}", err) );
         CommandError { kind, message: format!("{:#}", err) }
     }
 }

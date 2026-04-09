@@ -24,6 +24,7 @@ pub struct AppError {
     message: String,
 }
 
+//TODO: impl logging (info for most error)
 impl AppError {
     pub fn internal(err: anyhow::Error) -> Self {
         eprintln!("Internal error: {err:#}");
@@ -33,12 +34,12 @@ impl AppError {
         }
     }
 
-    pub fn not_found() -> Self {
-        AppError { status: StatusCode::NOT_FOUND, message: "Not found".to_string() }
+    pub fn not_found(msg: impl Into<String>) -> Self {
+        AppError { status: StatusCode::NOT_FOUND, message: msg.into() }
     }
 
-    pub fn unauthorized() -> Self {
-        AppError { status: StatusCode::UNAUTHORIZED, message: "Unauthorized".to_string() }
+    pub fn unauthorized(msg: impl Into<String>) -> Self {
+        AppError { status: StatusCode::UNAUTHORIZED, message: msg.into() }
     }
 
     pub fn forbidden() -> Self {
@@ -50,6 +51,10 @@ impl AppError {
             status: StatusCode::UNPROCESSABLE_ENTITY,
             message: "Unprocessable entity".to_string(),
         }
+    }
+    
+    pub fn conflict(msg: impl Into<String>) -> Self {
+        AppError { status: StatusCode::CONFLICT, message: msg.into() }
     }
 
     pub fn bad_request(msg: impl Into<String>) -> Self {
@@ -247,7 +252,7 @@ async fn select_note(
     let note = schema::Note::select(&mut conn, user_id, params.note_id)
         .await
         .map_err(AppError::from)?
-        .ok_or_else(AppError::not_found)?;
+        .ok_or_else(||AppError::not_found("Note doesn't exist"))?;
 
     Ok(Json(note.into()))
 }
@@ -263,6 +268,10 @@ async fn insert_user(
         .get_conn()
         .await
         .context("Failed to get DB connection")?;
+
+    if User::select(&mut conn, user.clone().username).await?.is_none() {
+        return Err(AppError::conflict("This username already exist"))
+    }
 
     user.insert(&mut conn).await.map_err(AppError::from)?;
 
@@ -283,7 +292,7 @@ async fn login_request(
     let user = schema::User::select(&mut conn, params.username)
         .await
         .map_err(AppError::from)?
-        .ok_or_else(AppError::not_found)?;
+        .ok_or_else(||AppError::not_found("User doesn't exist"))?;
 
     Ok(Json(shared::LoginRequest {
         salt_auth: user.salt_auth,
@@ -304,10 +313,10 @@ async fn login(
     let user = schema::User::select(&mut conn, params.username)
         .await
         .map_err(AppError::from)?
-        .ok_or_else(AppError::not_found)?;
+        .ok_or_else(||AppError::not_found("User doesn't exist"))?;
 
     if params.login_hash != user.stored_password_hash {
-        return Err(AppError::unauthorized());
+        return Err(AppError::unauthorized("Wrong password"));
     }
 
     let mut token = vec![0u8; 32];

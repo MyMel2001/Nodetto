@@ -132,7 +132,7 @@ impl Note {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct User {
     pub id: Option<u32>,
     pub username: String,

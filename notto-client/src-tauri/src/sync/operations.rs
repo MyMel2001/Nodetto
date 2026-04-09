@@ -99,7 +99,7 @@ pub async fn login(params: shared::LoginParams, instance: String) -> Result<shar
         .await
         .context("Could not reach the server")?
         .error_for_status()
-        .context("Login failed - check your credentials")?;
+        .context("Login failed")?;
 
     response
         .json()
