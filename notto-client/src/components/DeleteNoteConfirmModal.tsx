@@ -1,6 +1,7 @@
 import { handleCommandError } from "../lib/errors";
 import { invoke } from "@tauri-apps/api/core";
-import { useGeneral, Note } from "../store/general";
+import { useGeneral } from "../store/general";
+import { Note } from "../types";
 import { useModals } from "../store/modals";
 import { trace } from "@tauri-apps/plugin-log";
 

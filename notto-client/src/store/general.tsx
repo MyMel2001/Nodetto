@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { Note, Workspace } from "../types";
 
-export { Note } from "../types";
-
 export enum syncStatusEnum {
   Synched = "Synched",
   Syncing = "Syncing",
