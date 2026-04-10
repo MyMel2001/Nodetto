@@ -1,9 +1,9 @@
-import { handleCommandError } from "../lib/errors";
+import { handleCommandError } from "../../lib/errors";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useModals } from "../store/modals";
-import { NoteContent } from "../types";
+import { useModals } from "../../store/modals";
+import { NoteContent } from "../../types";
 
 type DiffLine = {
   text: string;

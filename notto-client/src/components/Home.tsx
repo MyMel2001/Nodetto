@@ -9,7 +9,7 @@ import { Note, NoteContent } from "../types";
 import Sidebar from "./sidebar/Sidebar";
 import NoteHeader from "./note/NoteHeader";
 import FolderView from "./note/FolderView";
-import NoteEditor from "./NoteEditor";
+import NoteEditor from "./note/NoteEditor";
 import Icon from "./icons/Icon";
 import { TreeCallbacks } from "./sidebar/NoteTree";
 

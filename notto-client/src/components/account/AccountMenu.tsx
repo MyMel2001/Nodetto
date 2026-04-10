@@ -1,14 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { syncStatusEnum, useGeneral } from "../store/general";
-import { useModals } from "../store/modals";
+import { syncStatusEnum, useGeneral } from "../../store/general";
+import { useModals } from "../../store/modals";
 import { listen } from "@tauri-apps/api/event";
 import { trace } from "@tauri-apps/plugin-log";
-import { handleCommandError, extractMessage } from "../lib/errors";
-import { Workspace } from "../types";
-import Icon from "./icons/Icon";
-import AuthForm from "./account/AuthForm";
-import WorkspaceMenu from "./account/WorkspaceMenu";
+import { handleCommandError, extractMessage } from "../../lib/errors";
+import { Workspace } from "../../types";
+import Icon from "../icons/Icon";
+import AuthForm from "./AuthForm";
+import WorkspaceMenu from "./WorkspaceMenu";
 
 type AuthMode = "login" | "register";
 

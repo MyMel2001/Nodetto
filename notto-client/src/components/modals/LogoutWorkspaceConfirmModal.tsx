@@ -1,9 +1,9 @@
-import { handleCommandError } from "../lib/errors";
+import { handleCommandError } from "../../lib/errors";
 import { invoke } from "@tauri-apps/api/core";
-import { useGeneral } from "../store/general";
-import { useModals } from "../store/modals";
+import { useGeneral } from "../../store/general";
+import { useModals } from "../../store/modals";
 import { trace } from "@tauri-apps/plugin-log";
-import { Workspace } from "../types";
+import { Workspace } from "../../types";
 
 export default function LogoutWorkspaceConfirmModal() {
   const { setWorkspace, syncStatus, setAllWorkspaces } = useGeneral();

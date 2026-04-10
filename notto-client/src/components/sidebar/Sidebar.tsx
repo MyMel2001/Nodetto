@@ -11,7 +11,7 @@ import {
 } from "@dnd-kit/core";
 import { Note } from "../../types";
 import { buildTree, DragGhostItem, NoteTreeItem, RootDropZone, TreeCallbacks } from "./NoteTree";
-import AccountMenu from "../AccountMenu";
+import AccountMenu from "../account/AccountMenu";
 import Icon from "../icons/Icon";
 
 type Props = {

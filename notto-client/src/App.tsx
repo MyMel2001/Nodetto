@@ -4,9 +4,9 @@ import "./App.css";
 import { useGeneral } from "./store/general";
 import { Workspace } from "./types";
 import Home from "./components/Home";
-import LogoutWorkspaceConfirmModal from "./components/LogoutWorkspaceConfirmModal";
-import DeleteNoteConfirmModal from "./components/DeleteNoteConfirmModal";
-import ConflictModal from "./components/ConflictModal";
+import LogoutWorkspaceConfirmModal from "./components/modals/LogoutWorkspaceConfirmModal";
+import DeleteNoteConfirmModal from "./components/modals/DeleteNoteConfirmModal";
+import ConflictModal from "./components/modals/ConflictModal";
 import Toaster from "./components/Toaster";
 import { handleCommandError } from "./lib/errors";
 
