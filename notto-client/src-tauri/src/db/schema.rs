@@ -51,6 +51,8 @@ impl Into<shared::Note> for Note {
 impl Note {
     /// Creates the `note` table if it does not already exist.
     pub fn create(conn: &Connection) -> Result<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS note (
                 uuid BLOB PRIMARY KEY,
                 id_workspace INTEGER NOT NULL REFERENCES workspace(id),
                 content BLOB,
@@ -177,6 +179,8 @@ pub struct Workspace {
 impl Workspace {
     /// Creates the `workspace` table if it does not already exist.
     pub fn create(conn: &Connection) -> Result<()> {
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS workspace (
                 id INTEGER PRIMARY KEY,
                 workspace_name TEXT,
                 username TEXT,
