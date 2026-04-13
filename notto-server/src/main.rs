@@ -17,6 +17,10 @@ use crate::schema::User;
 
 mod schema;
 
+mod embedded {
+    refinery::embed_migrations!("migrations");
+}
+
 /// Application error returned by all handlers.
 /// Internal errors are logged server-side and return a generic 500 to the client.
 pub struct AppError {
@@ -82,7 +86,7 @@ impl From<anyhow::Error> for AppError {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     dotenv().ok();
     //Env var should be like mysql://user:pass%20word@localhost/database_name
     let pool = Pool::new(
@@ -90,6 +94,18 @@ async fn main() {
             .expect("DATABASE_URL must be set")
             .as_str(),
     );
+
+    let mut conn = pool
+        .get_conn()
+        .await
+        .context("Failed to get DB connection for migrations")?;
+
+    embedded::migrations::runner()
+        .run_async(&mut conn)
+        .await
+        .context("Failed to run database migrations")?;
+
+    drop(conn);
 
     let app = Router::new()
         .route("/notes", post(send_notes))
@@ -112,6 +128,8 @@ async fn main() {
     axum::serve(listener, app)
         .await
         .expect("Server error");
+
+    Ok(())
 }
 
 /// Verifies that `token` matches one of the stored tokens for `username`.
