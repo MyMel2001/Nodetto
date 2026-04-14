@@ -15,12 +15,11 @@ type Store = {
   allWorkspaces: Workspace[];
   notes: Note[];
   syncStatus: syncStatusEnum;
-  syncErrorMessage: string | null;
 
   setWorkspace: (newWorkspace: Workspace | null) => void;
   setAllWorkspaces: (newWorkspaces: Workspace[]) => void;
   setNotes: (notes: Note[]) => void;
-  setSyncStatus: (status: syncStatusEnum, errorMessage?: string) => void;
+  setSyncStatus: (status: syncStatusEnum) => void;
 };
 
 /** Global store for workspace, note list, and sync status. */
@@ -29,13 +28,9 @@ export const useGeneral = create<Store>((set) => ({
   allWorkspaces: [],
   notes: [],
   syncStatus: syncStatusEnum.Offline,
-  syncErrorMessage: null,
 
   setWorkspace: (newWorkspace) => set(() => ({ workspace: newWorkspace })),
   setAllWorkspaces: (newWorkspaces) => set(() => ({ allWorkspaces: newWorkspaces })),
   setNotes: (notes) => set(() => ({ notes })),
-  setSyncStatus: (status, errorMessage) => set(() => ({
-    syncStatus: status,
-    syncErrorMessage: errorMessage ?? null,
-  })),
+  setSyncStatus: (status) => set(() => ({ syncStatus: status })),
 }));
