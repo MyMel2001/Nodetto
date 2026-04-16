@@ -3,7 +3,7 @@ name: Release Client
 on:
   push:
     tags:
-      - 'v*'
+      - 'client-v*'
   workflow_dispatch:
 
 jobs:
