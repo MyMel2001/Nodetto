@@ -82,7 +82,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Notto ${{ github.ref_name }}'
+          releaseName: 'Nodetto ${{ github.ref_name }}'
           releaseBody: 'See the assets below to download and install this version.'
           releaseDraft: true
           prerelease: false
@@ -151,7 +151,7 @@ jobs:
           NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: 'Notto ${{ github.ref_name }}'
+          releaseName: 'Nodetto ${{ github.ref_name }}'
           releaseBody: 'See the assets below to download and install this version.'
           releaseDraft: true
           prerelease: false

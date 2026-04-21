@@ -165,7 +165,7 @@ export default function Home() {
     <div className="flex h-screen pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] bg-slate-900 overflow-hidden overscroll-none">
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/50 z-40"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -214,7 +214,7 @@ export default function Home() {
           </>
         ) : (
           <div className="flex-1 flex flex-col">
-            <div className="lg:hidden border-b border-slate-700 p-3">
+            <div className="border-b border-slate-700 p-3">
               <button
                 onClick={() => setSidebarOpen(true)}
                 className="p-2 text-slate-400 hover:text-white transition-colors"

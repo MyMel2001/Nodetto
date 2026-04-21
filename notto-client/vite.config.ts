@@ -33,8 +33,8 @@ export default defineConfig(async () => ({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Notto',
-        short_name: 'Notto',
+        name: 'Nodetto',
+        short_name: 'Nodetto',
         description: 'End-to-end encrypted note-taking app',
         theme_color: '#1e293b',
         icons: [
@@ -62,5 +62,8 @@ export default defineConfig(async () => ({
   },
   build: {
     target: 'esnext'
+  },
+  define: {
+    global: 'window',
   }
 }));
