@@ -15,7 +15,7 @@ export default function NoteHeader({ note, onOpenSidebar, onEditTitle, onDelete,
       <div className="flex items-center gap-3 overflow-hidden">
         <button
           onClick={onOpenSidebar}
-          className="lg:hidden shrink-0 p-2 -ml-2 text-slate-400 hover:text-white transition-colors"
+          className="shrink-0 p-2 -ml-2 text-slate-400 hover:text-white transition-colors"
           title="Menu"
         >
           <Icon name="menu" className="w-5 h-5" />

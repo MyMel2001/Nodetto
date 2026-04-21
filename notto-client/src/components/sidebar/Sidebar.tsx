@@ -88,16 +88,16 @@ export default function Sidebar({
   return (
     <div
       className={`
-        fixed lg:relative inset-y-0 left-0 z-40 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
+        fixed inset-y-0 left-0 z-40 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
         w-80 bg-slate-800 border-r border-slate-700 flex flex-col
         transform transition-transform duration-200 ease-in-out
-        ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+        ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
     >
       {/* Header */}
       <div className="p-3 md:p-4 border-b border-slate-700">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-xl font-bold text-white">Notto</h2>
+          <h2 className="text-xl font-bold text-white">Nodetto</h2>
           <div className="flex gap-1">
             {!showDeleted && (
               <>
@@ -119,7 +119,7 @@ export default function Sidebar({
             )}
             <button
               onClick={onClose}
-              className="p-2 lg:hidden text-slate-400 hover:text-white transition-colors"
+              className="p-2 text-slate-400 hover:text-white transition-colors"
               title="Close"
             >
               <Icon name="close" className="w-5 h-5" />
