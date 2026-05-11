@@ -56,8 +56,8 @@ export default defineConfig(async () => ({
   server: {
     port: 1420,
     strictPort: true,
+    allowedHosts: ["nodetto.nodemixaholic.com"]
   },
-  host: '0.0.0.0',
   optimizeDeps: {
     exclude: []
   },
